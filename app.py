@@ -41,7 +41,7 @@ def chat():
                 'X-Title': 'FinBot Finance Tracker'
             },
             json={
-                'model': 'anthropic/claude-sonnet-4-5',
+                'model': 'deepseek/deepseek-r1:free',
                 'max_tokens': 1000,
                 'messages': messages
             }
