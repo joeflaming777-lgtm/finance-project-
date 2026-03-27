@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinBot – Your Finance Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d0f;
+    --surface: #111518;
+    --surface2: #181d22;
+    --border: #1e2630;
+    --accent: #00e5a0;
+    --accent2: #0099ff;
+    --warn: #ff6b35;
+    --text: #e8edf2;
+    --muted: #5a6a7a;
+    --user-bubble: #0d2235;
+    --bot-bubble: #0f1a14;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .header-text h1 {
+    font-family: var(--font-head);
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-text p {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .status-dot {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Ledger strip */
+  .ledger-strip {
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .ledger-strip::-webkit-scrollbar { display: none; }
+
+  .ledger-item {
+    background: var(--surface2);
+    padding: 10px 18px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .ledger-item span {
+    display: block;
+    font-size: 15px;
+    font-weight: 400;
+    margin-top: 2px;
+    letter-spacing: 0;
+  }
+
+  .ledger-item.income span { color: var(--accent); }
+  .ledger-item.expense span { color: var(--warn); }
+  .ledger-item.balance span { color: var(--accent2); }
+
+  /* Chat area */
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .chat-area::-webkit-scrollbar { width: 4px; }
+  .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* Messages */
+  .msg-row {
+    display: flex;
+    gap: 10px;
+    max-width: 760px;
+    width: 100%;
+    animation: fadeSlide 0.3s ease;
+  }
+
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-row.user { flex-direction: row-reverse; margin-left: auto; }
+
+  .avatar {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .avatar.bot { background: linear-gradient(135deg, #003322, #001a33); border: 1px solid var(--border); }
+  .avatar.user { background: var(--user-bubble); border: 1px solid #1a3a5a; }
+
+  .bubble {
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    max-width: calc(100% - 44px);
+  }
+
+  .msg-row.bot .bubble {
+    background: var(--bot-bubble);
+    border: 1px solid var(--border);
+    border-radius: 4px 12px 12px 12px;
+    color: var(--text);
+  }
+
+  .msg-row.user .bubble {
+    background: var(--user-bubble);
+    border: 1px solid #1a3a5a;
+    border-radius: 12px 4px 12px 12px;
+    color: var(--text);
+  }
+
+  /* Typing indicator */
+  .typing-indicator {
+    display: flex;
+    gap: 5px;
+    padding: 14px 16px;
+    align-items: center;
+  }
+
+  .typing-indicator span {
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+    opacity: 0.5;
+  }
+
+  .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+    40% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* Chips */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 16px 8px;
+    flex-shrink: 0;
+  }
+
+  .chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    padding: 7px 13px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .chip:hover {
+    background: #0d2a1f;
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  /* Input bar */
+  .input-bar {
+    padding: 12px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .input-wrap {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    transition: border-color 0.2s;
+  }
+
+  .input-wrap:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0, 229, 160, 0.08);
+  }
+
+  textarea {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    line-height: 1.5;
+    resize: none;
+    max-height: 120px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  textarea::placeholder { color: var(--muted); }
+
+  button.send-btn {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.2s, transform 0.15s;
+    font-size: 16px;
+  }
+
+  button.send-btn:hover { opacity: 0.85; transform: scale(1.05); }
+  button.send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+  /* Table rendering in bot messages */
+  .bubble table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 12px;
+  }
+
+  .bubble th {
+    background: #0d1f17;
+    padding: 6px 10px;
+    text-align: left;
+    color: var(--accent);
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+
+  .bubble td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .bubble td.pos { color: var(--accent); }
+  .bubble td.neg { color: var(--warn); }
+
+  .bubble code {
+    background: #0d1a0d;
+    color: var(--accent);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+  .bubble strong { color: var(--accent2); font-weight: 600; }
+
+  /* Welcome card */
+  .welcome-card {
+    margin: 8px auto;
+    max-width: 520px;
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .welcome-card .big-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+
+  .welcome-card h2 {
+    font-family: var(--font-head);
+    font-size: 20px;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+
+  .welcome-card p {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* API Key bar */
+  .apikey-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    background: #0d1a0f;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .apikey-bar label {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .apikey-bar input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+    outline: none;
+    min-width: 0;
+    transition: border-color 0.2s;
+  }
+
+  .apikey-bar input:focus { border-color: var(--accent); }
+  .apikey-bar input::placeholder { color: var(--muted); }
+
+  .apikey-bar .save-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: #000;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+  }
+
+  .apikey-bar .save-btn:hover { opacity: 0.85; }
+
+  .apikey-status {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  /* Score Panel */
+  .score-panel {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .score-panel::-webkit-scrollbar { display: none; }
+
+  /* Gauge */
+  .gauge-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 80px;
+    height: 48px;
+  }
+
+  .gauge-wrap svg { width: 80px; height: 48px; }
+
+  .gauge-score-label {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-head);
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .gauge-title {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 2px;
+  }
+
+  .score-divider {
+    width: 1px;
+    height: 44px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  /* Score metrics */
+  .score-metrics {
+    display: flex;
+    gap: 18px;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+
+  .score-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 80px;
+  }
+
+  .score-metric .sm-label {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .score-metric .sm-value {
+    font-size: 14px;
+    font-family: var(--font-head);
+    font-weight: 700;
+  }
+
+  .score-metric .sm-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    width: 80px;
+  }
+
+  .score-metric .sm-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s cubic-bezier(.22,.68,0,1.2);
+    width: 0%;
+  }
+
+  .sm-value.income-color  { color: var(--accent); }
+  .sm-value.expense-color { color: var(--warn); }
+  .sm-value.saving-color  { color: var(--accent2); }
+
+  .sm-bar-fill.income-fill  { background: var(--accent); }
+  .sm-bar-fill.expense-fill { background: var(--warn); }
+  .sm-bar-fill.saving-fill  { background: var(--accent2); }
+
+  /* Score badge */
+  .score-badge {
+    margin-left: auto;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+
+  .score-badge .grade {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .score-badge .grade-label {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Responsive */
+  @media (max-width: 520px) {
+    .chips { gap: 6px; }
+    .chip { font-size: 11px; padding: 6px 10px; }
+    .score-panel { padding: 10px 14px; gap: 14px; }
+    .score-metrics { gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">💹</div>
+  <div class="header-text">
+    <h1>FinBot</h1>
+    <p>AI Finance Assistant</p>
+  </div>
+  <div class="status-dot">
+    <div class="dot"></div>
+    <span>Online</span>
+  </div>
+</header>
+
+<!-- API Key Bar (hidden - key is preconfigured) -->
+<div class="apikey-bar" style="display:none">
+  <label>🔑 API Key</label>
+  <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
+  <button class="save-btn" onclick="saveApiKey()">Connect</button>
+  <span class="apikey-status" id="apiKeyStatus" style="color:var(--muted)">Not connected</span>
+</div>
+
+<div class="ledger-strip" id="ledger">
+  <div class="ledger-item income">TOTAL INCOME <span id="totalIncome">₹0</span></div>
+  <div class="ledger-item expense">TOTAL EXPENSES <span id="totalExpenses">₹0</span></div>
+  <div class="ledger-item balance">NET BALANCE <span id="netBalance">₹0</span></div>
+  <div class="ledger-item">TRANSACTIONS <span id="txCount">0</span></div>
+  <div class="ledger-item">TOP CATEGORY <span id="topCat">—</span></div>
+</div>
+
+<!-- Financial Score Panel -->
+<div class="score-panel" id="scorePanel">
+  <div>
+    <div class="gauge-wrap">
+      <svg viewBox="0 0 80 48" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8,44 A32,32 0 0,1 72,44" fill="none" stroke="#1e2630" stroke-width="7" stroke-linecap="round"/>
+        <path id="gaugeFill" d="M8,44 A32,32 0 0,1 72,44" fill="none" stroke="#00e5a0" stroke-width="7"
+          stroke-linecap="round" stroke-dasharray="100.53" stroke-dashoffset="100.53"
+          style="transition: stroke-dashoffset 0.8s cubic-bezier(.22,.68,0,1.2), stroke 0.5s;"/>
+      </svg>
+      <div class="gauge-score-label" id="gaugeScore" style="color:#5a6a7a">—</div>
+    </div>
+    <div class="gauge-title">SCORE</div>
+  </div>
+
+  <div class="score-divider"></div>
+
+  <div class="score-metrics">
+    <div class="score-metric">
+      <div class="sm-label">💰 Salary / Income</div>
+      <div class="sm-value income-color" id="smIncome">₹0</div>
+      <div class="sm-bar"><div class="sm-bar-fill income-fill" id="smIncomeBar"></div></div>
+    </div>
+    <div class="score-metric">
+      <div class="sm-label">💸 Spent</div>
+      <div class="sm-value expense-color" id="smSpent">₹0</div>
+      <div class="sm-bar"><div class="sm-bar-fill expense-fill" id="smSpentBar"></div></div>
+    </div>
+    <div class="score-metric">
+      <div class="sm-label">🏦 Savings</div>
+      <div class="sm-value saving-color" id="smSavings">₹0</div>
+      <div class="sm-bar"><div class="sm-bar-fill saving-fill" id="smSavingsBar"></div></div>
+    </div>
+    <div class="score-metric">
+      <div class="sm-label">📊 Savings Rate</div>
+      <div class="sm-value" id="smRate" style="color:var(--text)">—</div>
+      <div class="sm-bar"><div class="sm-bar-fill" id="smRateBar" style="background:var(--accent2)"></div></div>
+    </div>
+  </div>
+
+  <div class="score-badge">
+    <div class="grade" id="gradeBadge" style="color:var(--muted)">—</div>
+    <div class="grade-label">GRADE</div>
+  </div>
+</div>
+
+<div class="chat-area" id="chatArea">
+  <div class="welcome-card">
+    <div class="big-icon">🧾</div>
+    <h2>Finance Tracker Bot</h2>
+    <p>Track income, log expenses, and get insights on your spending. Just chat naturally — I'll handle the numbers.</p>
+  </div>
+</div>
+
+<div class="chips" id="chips">
+  <div class="chip" onclick="sendChip(this)">Show my financial score</div>
+  <div class="chip" onclick="sendChip(this)">Add income ₹5000 salary</div>
+  <div class="chip" onclick="sendChip(this)">Spent ₹800 on groceries</div>
+  <div class="chip" onclick="sendChip(this)">Show my balance</div>
+  <div class="chip" onclick="sendChip(this)">List all transactions</div>
+  <div class="chip" onclick="sendChip(this)">Spending by category</div>
+  <div class="chip" onclick="sendChip(this)">Where am I overspending?</div>
+</div>
+
+<div class="input-bar">
+  <div class="input-wrap">
+    <textarea id="userInput" placeholder="e.g. 'Add ₹3000 rent expense' or 'What did I spend this week?'" rows="1"
+      onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
+      ↑
+    </button>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
+  transactions: [],
+  conversationHistory: []
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function formatCurrency(n) {
+  return '₹' + Math.abs(n).toLocaleString('en-IN');
+}
+
+function updateLedger() {
+  const income   = state.transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const expenses = state.transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const balance  = income - expenses;
+
+  document.getElementById('totalIncome').textContent   = formatCurrency(income);
+  document.getElementById('totalExpenses').textContent = formatCurrency(expenses);
+  document.getElementById('netBalance').textContent    = (balance >= 0 ? '' : '-') + formatCurrency(balance);
+  document.getElementById('txCount').textContent       = state.transactions.length;
+
+  // top category
+  const cats = {};
+  state.transactions.filter(t => t.type === 'expense').forEach(t => {
+    cats[t.category] = (cats[t.category] || 0) + t.amount;
+  });
+  const top = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
+  document.getElementById('topCat').textContent = top ? top[0] : '—';
+
+  updateScore(income, expenses, balance);
+}
+
+function updateScore(income, expenses, savings) {
+  // ── Score metrics display ──────────────────────────────────────────────────
+  document.getElementById('smIncome').textContent  = formatCurrency(income);
+  document.getElementById('smSpent').textContent   = formatCurrency(expenses);
+  document.getElementById('smSavings').textContent = (savings >= 0 ? '' : '-') + formatCurrency(savings);
+
+  const savingsRate = income > 0 ? Math.max(0, (savings / income) * 100) : 0;
+  document.getElementById('smRate').textContent = income > 0 ? savingsRate.toFixed(1) + '%' : '—';
+
+  // Progress bars (relative to income)
+  const incPct  = 100;
+  const expPct  = income > 0 ? Math.min(100, (expenses / income) * 100) : 0;
+  const savePct = income > 0 ? Math.min(100, Math.max(0, (savings / income) * 100)) : 0;
+  const ratePct = Math.min(100, savingsRate * 2); // 50% savings = full bar
+
+  document.getElementById('smIncomeBar').style.width  = incPct + '%';
+  document.getElementById('smSpentBar').style.width   = expPct + '%';
+  document.getElementById('smSavingsBar').style.width = savePct + '%';
+  document.getElementById('smRateBar').style.width    = ratePct + '%';
+
+  if (income === 0) {
+    document.getElementById('gaugeScore').textContent = '—';
+    document.getElementById('gradeBadge').textContent = '—';
+    document.getElementById('gradeBadge').style.color = 'var(--muted)';
+    return;
+  }
+
+  // ── Financial Score (0–100) ────────────────────────────────────────────────
+  // Component 1: Savings rate (0–50 pts)  — 20%+ rate = full marks
+  const savingsScore = Math.min(50, (savingsRate / 20) * 50);
+
+  // Component 2: Expense ratio (0–30 pts) — spending <50% of income = full marks
+  const expRatio     = expenses / income;
+  const expScore     = Math.max(0, 30 - (expRatio * 30));
+
+  // Component 3: Has income logged (0–20 pts)
+  const hasIncome    = income > 0 ? 20 : 0;
+
+  const score = Math.round(Math.min(100, savingsScore + expScore + hasIncome));
+
+  // Grade
+  let grade, gradeColor;
+  if      (score >= 85) { grade = 'A+'; gradeColor = '#00e5a0'; }
+  else if (score >= 70) { grade = 'A';  gradeColor = '#00e5a0'; }
+  else if (score >= 55) { grade = 'B';  gradeColor = '#0099ff'; }
+  else if (score >= 40) { grade = 'C';  gradeColor = '#f0b429'; }
+  else if (score >= 25) { grade = 'D';  gradeColor = '#ff6b35'; }
+  else                  { grade = 'F';  gradeColor = '#ff4444'; }
+
+  // Update gauge
+  const arcLength = 100.53; // π × r (r=32) ≈ 100.53 for semicircle
+  const offset    = arcLength - (score / 100) * arcLength;
+  const gauge     = document.getElementById('gaugeFill');
+  gauge.style.strokeDashoffset = offset;
+  gauge.style.stroke = gradeColor;
+
+  const scoreEl = document.getElementById('gaugeScore');
+  scoreEl.textContent = score;
+  scoreEl.style.color = gradeColor;
+
+  const gradeEl = document.getElementById('gradeBadge');
+  gradeEl.textContent = grade;
+  gradeEl.style.color = gradeColor;
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function scrollBottom() {
+  const area = document.getElementById('chatArea');
+  area.scrollTop = area.scrollHeight;
+}
+
+function addMessage(role, html) {
+  const area = document.getElementById('chatArea');
+  const row  = document.createElement('div');
+  row.className = `msg-row ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = `avatar ${role}`;
+  avatar.textContent = role === 'bot' ? '🤖' : '👤';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = html;
+
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  area.appendChild(row);
+  scrollBottom();
+  return bubble;
+}
+
+function addTyping() {
+  const area = document.getElementById('chatArea');
+  const row  = document.createElement('div');
+  row.className = 'msg-row bot';
+  row.id = 'typingRow';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar bot';
+  avatar.textContent = '🤖';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  area.appendChild(row);
+  scrollBottom();
+}
+
+function removeTyping() {
+  const el = document.getElementById('typingRow');
+  if (el) el.remove();
+}
+
+function sendChip(chip) {
+  document.getElementById('userInput').value = chip.textContent;
+  sendMessage();
+}
+
+// ── Main send ─────────────────────────────────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('sendBtn').disabled = true;
+
+  addMessage('user', escapeHtml(text));
+
+  // Build system prompt with current state
+  const systemPrompt = `You are FinBot, a smart personal finance tracker assistant. You help users log transactions, query their financial data, and provide insights.
+
+CURRENT FINANCE DATA (JSON):
+${JSON.stringify({ transactions: state.transactions }, null, 2)}
+
+CAPABILITIES:
+1. LOG TRANSACTIONS: When user mentions adding income or expenses, extract the amount, category, and description, then respond with a JSON block AND a friendly message.
+2. QUERY DATA: Summarize income, expenses, balances, spending by category.
+3. INSIGHTS: Identify top spending categories, savings rate, suggestions.
+
+When logging a transaction, ALWAYS include a JSON block in this exact format:
+<transaction>
+{"type":"income"|"expense","amount":NUMBER,"category":"STRING","description":"STRING","date":"TODAY"}
+</transaction>
+
+Categories for income: Salary, Freelance, Investment, Gift, Other Income
+Categories for expense: Food, Groceries, Transport, Rent, Utilities, Shopping, Entertainment, Health, Education, Other
+
+Rules:
+- Indian Rupee (₹) is the default currency
+- Be conversational and brief
+- For balance queries, show a clean summary
+- For category breakdowns, use a compact text table
+- If the user's intent is unclear, ask for clarification
+- Never make up transactions that weren't explicitly stated
+- Today's date: ${new Date().toLocaleDateString('en-IN')}`;
+
+  state.conversationHistory.push({ role: 'user', content: text });
+
+  addTyping();
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...state.conversationHistory
+        ]
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const errMsg = data?.error?.message || `HTTP ${response.status}`;
+      removeTyping();
+      addMessage('bot', `⚠️ API Error: <code>${errMsg}</code><br>Please check your API key and try again.`);
+      document.getElementById('sendBtn').disabled = false;
+      return;
+    }
+
+    const raw = data.choices?.[0]?.message?.content || '';
+
+    // Parse any transaction blocks
+    const txRegex = /<transaction>([\s\S]*?)<\/transaction>/g;
+    let match;
+    while ((match = txRegex.exec(raw)) !== null) {
+      try {
+        const tx = JSON.parse(match[1].trim());
+        tx.id   = Date.now() + Math.random();
+        tx.date = tx.date || new Date().toLocaleDateString('en-IN');
+        state.transactions.push(tx);
+        updateLedger();
+      } catch (e) { /* ignore parse errors */ }
+    }
+
+    // Clean response for display (remove raw <transaction> blocks)
+    const clean = raw.replace(/<transaction>[\s\S]*?<\/transaction>/g, '').trim();
+
+    state.conversationHistory.push({ role: 'assistant', content: raw });
+
+    removeTyping();
+    addMessage('bot', formatBotText(clean));
+
+  } catch (err) {
+    removeTyping();
+    addMessage('bot', '⚠️ Connection error. Please check your API key and try again.');
+    console.error(err);
+  }
+
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('userInput').focus();
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatBotText(text) {
+  // Bold **text**
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // Inline code `code`
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Bullet points
+  text = text.replace(/^[-•]\s+(.+)/gm, '<li>$1</li>');
+  text = text.replace(/(<li>.*<\/li>)/s, '<ul style="margin:8px 0 8px 16px;line-height:1.8">$1</ul>');
+  // Newlines
+  text = text.replace(/\n{2,}/g, '<br><br>');
+  text = text.replace(/\n/g, '<br>');
+  return text;
+}
+
+// Init
+updateLedger();
+setTimeout(() => {
+  addMessage('bot', 'Hey there! 👋 I\'m <strong>FinBot</strong>, your personal finance assistant — ready to go!<br><br>Tell me about your income or expenses and I\'ll track them for you. Try:<br><br><code>Added ₹45,000 salary this month</code><br><code>Spent ₹1200 on lunch today</code><br><code>Show my balance</code>');
+}, 300);
+</script>
+</body>
+</html>
