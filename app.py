@@ -7,7 +7,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 @app.after_request
 def after_request(response):
@@ -33,15 +33,13 @@ def chat():
         messages = data.get("messages", [])
         
         response = requests.post(
-            'https://openrouter.ai/api/v1/chat/completions',
+            'https://api.groq.com/openai/v1/chat/completions',
             headers={
                 'Content-Type': 'application/json',
-                'Authorization': f'Bearer {OPENROUTER_API_KEY}',
-                'HTTP-Referer': 'https://finbot.app',
-                'X-Title': 'FinBot Finance Tracker'
+                'Authorization': f'Bearer {GROQ_API_KEY}'
             },
             json={
-                'model': 'deepseek/deepseek-r1:free',
+                'model': 'llama-3.1-8b-instant',
                 'max_tokens': 1000,
                 'messages': messages
             }

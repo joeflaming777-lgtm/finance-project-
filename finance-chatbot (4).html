@@ -682,8 +682,8 @@ function formatCurrency(n) {
 }
 
 function updateLedger() {
-  const income   = state.transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const expenses = state.transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const income   = state.transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+  const expenses = state.transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
   const balance  = income - expenses;
 
   document.getElementById('totalIncome').textContent   = formatCurrency(income);
@@ -694,7 +694,7 @@ function updateLedger() {
   // top category
   const cats = {};
   state.transactions.filter(t => t.type === 'expense').forEach(t => {
-    cats[t.category] = (cats[t.category] || 0) + t.amount;
+    cats[t.category] = (cats[t.category] || 0) + Number(t.amount);
   });
   const top = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
   document.getElementById('topCat').textContent = top ? top[0] : '—';
@@ -847,32 +847,24 @@ async function sendMessage() {
   addMessage('user', escapeHtml(text));
 
   // Build system prompt with current state
-  const systemPrompt = `You are FinBot, a smart personal finance tracker assistant. You help users log transactions, query their financial data, and provide insights.
+  const systemPrompt = `You are FinBot, a personal finance assistant.
 
-CURRENT FINANCE DATA (JSON):
-${JSON.stringify({ transactions: state.transactions }, null, 2)}
+CURRENT_DATA:
+${JSON.stringify({ transactions: state.transactions })}
 
-CAPABILITIES:
-1. LOG TRANSACTIONS: When user mentions adding income or expenses, extract the amount, category, and description, then respond with a JSON block AND a friendly message.
-2. QUERY DATA: Summarize income, expenses, balances, spending by category.
-3. INSIGHTS: Identify top spending categories, savings rate, suggestions.
-
-When logging a transaction, ALWAYS include a JSON block in this exact format:
+INSTRUCTIONS:
+1. When user adds income or expense, you MUST append a data block at the END of your message using exactly this format (no markdown):
 <transaction>
-{"type":"income"|"expense","amount":NUMBER,"category":"STRING","description":"STRING","date":"TODAY"}
+{"type":"income","amount":1234,"category":"Category","description":"Brief detail"}
 </transaction>
+Use "income" or "expense". You MUST extract the exact number the user provides! If they say 5000, amount is 5000.
 
-Categories for income: Salary, Freelance, Investment, Gift, Other Income
-Categories for expense: Food, Groceries, Transport, Rent, Utilities, Shopping, Entertainment, Health, Education, Other
-
-Rules:
-- Indian Rupee (₹) is the default currency
-- Be conversational and brief
-- For balance queries, show a clean summary
-- For category breakdowns, use a compact text table
-- If the user's intent is unclear, ask for clarification
-- Never make up transactions that weren't explicitly stated
-- Today's date: ${new Date().toLocaleDateString('en-IN')}`;
+2. Keep your text response very brief and friendly. If the user adds income or salary, reply with a festive message like "Salary is credited!" or "Income added successfully!".
+3. NEVER repeat or output the CURRENT_DATA back to the user!
+4. Default to ₹ currency.
+5. Categories: Salary, Freelance, Investment, Gift, Food, Groceries, Transport, Rent, Utilities, Shopping, Entertainment, Health, Education, Other.
+6. Guardrail: If the user asks something unrelated to finance, go ahead and answer their question briefly, but ALWAYS end your reply with the disclaimer: "By the way, I am a finance bot! Feel free to ask me anything about your finances."
+7. Score queries: If the user asks for their "financial score" or "grade", DO NOT calculate it yourself! Simply tell them: "Your live Financial Score and Grade are automatically calculated and displayed in the Score Panel at the very top of your screen!"`;
 
   state.conversationHistory.push({ role: 'user', content: text });
 
