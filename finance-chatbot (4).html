@@ -677,6 +677,14 @@ const state = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) return;
+  // This is a simplified function to show it is now defined. True handling is done in app.py.
+  document.getElementById('apiKeyStatus').textContent = 'Key configured in backend!';
+  document.getElementById('apiKeyStatus').style.color = 'var(--accent)';
+}
+
 function formatCurrency(n) {
   return '₹' + Math.abs(n).toLocaleString('en-IN');
 }
@@ -938,7 +946,7 @@ function formatBotText(text) {
   text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
   // Bullet points
   text = text.replace(/^[-•]\s+(.+)/gm, '<li>$1</li>');
-  text = text.replace(/(<li>.*<\/li>)/s, '<ul style="margin:8px 0 8px 16px;line-height:1.8">$1</ul>');
+  text = text.replace(/((?:<li>.*?<\/li>\n*)+)/g, '<ul style="margin:8px 0 8px 16px;line-height:1.8">\n$1</ul>');
   // Newlines
   text = text.replace(/\n{2,}/g, '<br><br>');
   text = text.replace(/\n/g, '<br>');

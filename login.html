@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - FinBot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:       #0c1120;
+            --accent:   #3b82f6;
+            --accent2:  #8b5cf6;
+            --text:     #f8fafc;
+            --muted:    #94a3b8;
+            --card:     rgba(22, 33, 55, 0.94);
+            --panel:    rgba(10, 15, 32, 0.97);
+            --input-bg: rgba(8, 14, 30, 0.75);
+            --border:   rgba(255, 255, 255, 0.08);
+            --error:    #f87171;
+            --success:  #34d399;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background: var(--bg);
+            background-image:
+                radial-gradient(ellipse at 15% 25%,  rgba(59,130,246,0.16) 0, transparent 52%),
+                radial-gradient(ellipse at 85% 75%,  rgba(139,92,246,0.14) 0, transparent 52%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        /* ============================================================
+           PAGE WRAPPER – two-panel card
+        ============================================================ */
+        .page-wrapper {
+            display: flex;
+            align-items: stretch;
+            width: 100%;
+            max-width: 880px;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 30px 90px rgba(0,0,0,0.6);
+            border: 1px solid var(--border);
+            animation: rise 0.65s cubic-bezier(.22,1,.36,1);
+        }
+        @keyframes rise {
+            from { opacity:0; transform: translateY(32px) scale(0.97); }
+            to   { opacity:1; transform: translateY(0) scale(1); }
+        }
+
+        /* ============================================================
+           LEFT PANEL – bear showcase
+        ============================================================ */
+        .char-panel {
+            flex: 0 0 360px;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            padding: 30px 24px 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+        /* Ambient glow */
+        .char-panel::before {
+            content: '';
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse at 30% 20%, rgba(139,92,246,0.14) 0, transparent 55%),
+                radial-gradient(ellipse at 70% 80%, rgba(59,130,246,0.10) 0, transparent 55%);
+            pointer-events: none;
+        }
+
+        /* Header */
+        .panel-header {
+            position: relative; z-index: 2;
+            text-align: center;
+        }
+        .panel-header h2 {
+            font-size: 1.2rem; font-weight: 800;
+            background: linear-gradient(135deg, #c084fc, #60a5fa);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        /* Status pill */
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 7px;
+            margin-top: 10px;
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            font-size: 0.74rem; font-weight: 600; color: var(--muted);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .status-pill.fading { opacity: 0; transform: translateY(5px); }
+        #sdot { font-size: 0.6rem; transition: color 0.4s; }
+
+        /* Bear stage – the 3D space */
+        .bear-stage {
+            position: relative;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+            z-index: 2;
+        }
+
+        /* Speech bubble */
+        .bear-bubble {
+            position: absolute;
+            top: -4px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            background: #fff;
+            color: #1e1b4b;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.76rem; font-weight: 700;
+            white-space: nowrap;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s;
+            z-index: 5;
+        }
+        .bear-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -6px; left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #fff; border-bottom: none;
+        }
+        .bear-bubble.show { transform: translateX(-50%) scale(1); opacity: 1; }
+
+        /* Float wrapper – only translateY, must preserve-3d for child flip */
+        .bear-float {
+            transform-style: preserve-3d;
+            animation: bearBob 3.6s ease-in-out infinite;
+        }
+        .bear-float.paused { animation-play-state: paused; }
+        @keyframes bearBob {
+            0%,100% { transform: translateY(0); }
+            50%      { transform: translateY(-14px); }
+        }
+
+        /* 3D flip element */
+        .bear-inner {
+            width: 260px;
+            height: 300px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.95s cubic-bezier(0.34, 1.1, 0.64, 1);
+        }
+
+        .bear-front, .bear-back {
+            position: absolute; inset: 0;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .bear-back { transform: rotateY(180deg); }
+
+        /* Footer */
+        .panel-footer {
+            position: relative; z-index: 2;
+            text-align: center;
+        }
+        .privacy-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 0.72rem; color: var(--muted);
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 6px 16px; border-radius: 20px;
+        }
+
+        /* ============================================================
+           RIGHT PANEL – login form
+        ============================================================ */
+        .card {
+            flex: 1;
+            background: var(--card);
+            padding: 2.8rem 2.6rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .logo { text-align: center; margin-bottom: 1.8rem; }
+        .logo h1 {
+            font-size: 2.1rem; font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .logo p { color: var(--muted); font-size: 0.88rem; margin-top: 4px; }
+
+        .form-group { margin-bottom: 1.2rem; }
+        .form-group label {
+            display: block; margin-bottom: 6px;
+            font-size: 0.8rem; font-weight: 700; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 0.07em;
+        }
+        .input-wrap { position: relative; }
+        .input-icon {
+            position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+            color: var(--muted); font-size: 1rem; pointer-events: none;
+        }
+        .toggle-pw {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: var(--muted);
+            cursor: pointer; font-size: 0.76rem; font-weight: 700;
+            padding: 2px; text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .toggle-pw:hover { color: var(--text); }
+
+        input[type="email"], input[type="password"], input[type="text"] {
+            width: 100%;
+            padding: 0.8rem 2.8rem 0.8rem 2.6rem;
+            background: var(--input-bg);
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            color: var(--text); font-size: 0.94rem;
+            outline: none;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+        input:focus   { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.14); }
+        input.err     { border-color: var(--error) !important; }
+
+        .msg { font-size: 0.78rem; margin-top: 5px; display: none; }
+        .msg.error   { color: var(--error);  display: block; }
+        .msg.success { color: var(--success); display: block; }
+
+        .row { display: flex; justify-content: space-between; align-items: center; margin: 0.1rem 0 1.1rem; }
+        .check-label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--muted); cursor: pointer; }
+        .check-label input { accent-color: var(--accent); }
+        .link { color: #60a5fa; font-size: 0.8rem; text-decoration: none; font-weight: 500; }
+        .link:hover { text-decoration: underline; }
+
+        .btn {
+            width: 100%; padding: 0.85rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #fff; border: none; border-radius: 12px;
+            font-size: 0.97rem; font-weight: 700; cursor: pointer;
+            letter-spacing: 0.02em;
+            transition: transform .2s, box-shadow .2s, opacity .2s;
+        }
+        .btn:hover    { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,130,246,0.38); }
+        .btn:active   { transform: none; }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+        .footer-note { text-align: center; margin-top: 1.4rem; font-size: 0.86rem; color: var(--muted); }
+        .footer-note a { color: var(--text); font-weight: 700; cursor: pointer; }
+        .footer-note a:hover { color: #a78bfa; }
+
+        /* Modal */
+        .overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.65); backdrop-filter: blur(7px);
+            z-index: 100; align-items: center; justify-content: center;
+        }
+        .overlay.open { display: flex; }
+        .modal {
+            background: #0f172a; border: 1px solid var(--border);
+            border-radius: 22px; padding: 2rem;
+            width: 92%; max-width: 400px;
+            box-shadow: 0 24px 70px rgba(0,0,0,0.6);
+            animation: rise 0.45s cubic-bezier(.22,1,.36,1);
+            position: relative;
+        }
+        .modal h2 {
+            font-size: 1.4rem; font-weight: 800; text-align: center;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 1.4rem;
+        }
+        .modal-close {
+            position: absolute; top: 1rem; right: 1rem;
+            background: none; border: none; color: var(--muted);
+            font-size: 1.2rem; cursor: pointer;
+        }
+        .modal-close:hover { color: var(--text); }
+        #loginFormMsg, #regFormMsg { font-size: 0.86rem; margin-bottom: 10px; }
+
+        /* Responsive */
+        @media (max-width: 720px) {
+            .page-wrapper { flex-direction: column; max-width: 420px; }
+            .char-panel { flex: none; border-right: none; border-bottom: 1px solid var(--border); padding: 24px 20px; }
+            .bear-inner { width: 200px; height: 230px; }
+            .bear-stage { min-height: 220px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+    <!-- ================================================================
+         LEFT PANEL — Big Bear
+    ================================================================ -->
+    <div class="char-panel">
+
+        <div class="panel-header">
+            <h2>🐻 FinBot Guardian</h2>
+            <div class="status-pill" id="statusPill">
+                <span id="sdot">●</span>
+                <span id="statusText">On duty &amp; watching…</span>
+            </div>
+        </div>
+
+        <div class="bear-stage" id="bearStage">
+            <div class="bear-bubble" id="bearBubble">Hello! Welcome back 👋</div>
+
+            <div class="bear-float" id="bearFloat">
+                <div class="bear-inner" id="bearInner">
+
+                    <!-- ── FRONT FACE ── -->
+                    <div class="bear-front">
+                        <svg viewBox="0 0 260 300" xmlns="http://www.w3.org/2000/svg" width="260" height="300">
+                            <defs>
+                                <radialGradient id="bBodyF" cx="50%" cy="35%" r="65%">
+                                    <stop offset="0%"   stop-color="#d4874a"/>
+                                    <stop offset="100%" stop-color="#7a3d14"/>
+                                </radialGradient>
+                                <radialGradient id="bFaceF" cx="50%" cy="38%" r="68%">
+                                    <stop offset="0%"   stop-color="#f8e4c0"/>
+                                    <stop offset="100%" stop-color="#edca90"/>
+                                </radialGradient>
+                                <radialGradient id="bTummyF" cx="50%" cy="40%" r="65%">
+                                    <stop offset="0%"   stop-color="#f5ddb0"/>
+                                    <stop offset="100%" stop-color="#e8c882"/>
+                                </radialGradient>
+                            </defs>
+
+                            <!-- Ground shadow -->
+                            <ellipse cx="130" cy="297" rx="75" ry="9" fill="#000" opacity="0.2"/>
+
+                            <!-- Body -->
+                            <ellipse cx="130" cy="264" rx="84" ry="52" fill="url(#bBodyF)"/>
+
+                            <!-- Tummy patch -->
+                            <ellipse cx="130" cy="260" rx="52" ry="40" fill="url(#bTummyF)" opacity="0.9"/>
+
+                            <!-- FinBot badge on tummy -->
+                            <circle  cx="130" cy="260" r="18" fill="rgba(30,58,138,0.35)" stroke="rgba(96,165,250,0.5)" stroke-width="1.5"/>
+                            <text    x="130" y="264" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="800" fill="#93c5fd" font-family="Inter,sans-serif">FB</text>
+
+                            <!-- Left arm -->
+                            <ellipse cx="46"  cy="252" rx="28" ry="17" fill="#a05828" transform="rotate(-38 46 252)"/>
+                            <ellipse cx="28"  cy="268" rx="22" ry="17" fill="#8b4513"/>
+                            <!-- Left paw toes -->
+                            <ellipse cx="18"  cy="264" rx="7" ry="6" fill="#7a3b0f"/>
+                            <ellipse cx="28"  cy="259" rx="7" ry="6" fill="#7a3b0f"/>
+                            <ellipse cx="38"  cy="264" rx="7" ry="6" fill="#7a3b0f"/>
+
+                            <!-- Right arm -->
+                            <ellipse cx="214" cy="252" rx="28" ry="17" fill="#a05828" transform="rotate(38 214 252)"/>
+                            <ellipse cx="232" cy="268" rx="22" ry="17" fill="#8b4513"/>
+                            <!-- Right paw toes -->
+                            <ellipse cx="222" cy="264" rx="7" ry="6" fill="#7a3b0f"/>
+                            <ellipse cx="232" cy="259" rx="7" ry="6" fill="#7a3b0f"/>
+                            <ellipse cx="242" cy="264" rx="7" ry="6" fill="#7a3b0f"/>
+
+                            <!-- Left foot -->
+                            <ellipse cx="100" cy="290" rx="32" ry="14" fill="#8b4513"/>
+                            <ellipse cx="88"  cy="289" rx="8"  ry="7"  fill="#7a3b0f"/>
+                            <ellipse cx="100" cy="285" rx="8"  ry="7"  fill="#7a3b0f"/>
+                            <ellipse cx="112" cy="289" rx="8"  ry="7"  fill="#7a3b0f"/>
+
+                            <!-- Right foot -->
+                            <ellipse cx="160" cy="290" rx="32" ry="14" fill="#8b4513"/>
+                            <ellipse cx="148" cy="289" rx="8"  ry="7"  fill="#7a3b0f"/>
+                            <ellipse cx="160" cy="285" rx="8"  ry="7"  fill="#7a3b0f"/>
+                            <ellipse cx="172" cy="289" rx="8"  ry="7"  fill="#7a3b0f"/>
+
+                            <!-- Left ear outer -->
+                            <circle cx="54"  cy="54" r="40" fill="#9e4f22"/>
+                            <!-- Left inner ear -->
+                            <circle cx="54"  cy="54" r="24" fill="url(#bFaceF)"/>
+
+                            <!-- Right ear outer -->
+                            <circle cx="206" cy="54" r="40" fill="#9e4f22"/>
+                            <!-- Right inner ear -->
+                            <circle cx="206" cy="54" r="24" fill="url(#bFaceF)"/>
+
+                            <!-- Head -->
+                            <circle cx="130" cy="122" r="96" fill="url(#bBodyF)"/>
+
+                            <!-- Face patch -->
+                            <ellipse cx="130" cy="140" rx="67" ry="62" fill="url(#bFaceF)"/>
+
+                            <!-- ── EYES: IDLE (default – slightly relaxed) ── -->
+                            <g id="eyes-idle">
+                                <!-- Left eye white -->
+                                <ellipse cx="100" cy="122" rx="20" ry="18" fill="white"/>
+                                <!-- Left iris -->
+                                <circle  cx="100" cy="124" r="11" fill="#1e40af"/>
+                                <!-- Left pupil -->
+                                <circle  cx="100" cy="124" r="6.5" fill="#0f0f1a"/>
+                                <!-- Left shine -->
+                                <circle  cx="106" cy="117" r="4"   fill="white"/>
+                                <circle  cx="95"  cy="129" r="2.5" fill="white" opacity="0.5"/>
+
+                                <!-- Right eye white -->
+                                <ellipse cx="160" cy="122" rx="20" ry="18" fill="white"/>
+                                <!-- Right iris -->
+                                <circle  cx="160" cy="124" r="11" fill="#1e40af"/>
+                                <!-- Right pupil -->
+                                <circle  cx="160" cy="124" r="6.5" fill="#0f0f1a"/>
+                                <!-- Right shine -->
+                                <circle  cx="166" cy="117" r="4"   fill="white"/>
+                                <circle  cx="155" cy="129" r="2.5" fill="white" opacity="0.5"/>
+
+                                <!-- Neutral brows -->
+                                <path d="M 80 104 Q 100 97 120 104" stroke="#6b2e0e" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                                <path d="M 140 104 Q 160 97 180 104" stroke="#6b2e0e" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                            </g>
+
+                            <!-- ── EYES: WATCHING (wide open – email focused) ── -->
+                            <g id="eyes-watch" style="display:none;">
+                                <!-- Left eye white – taller -->
+                                <ellipse cx="100" cy="120" rx="22" ry="24" fill="white"/>
+                                <!-- Left iris – larger, alert -->
+                                <circle  cx="100" cy="122" r="14" fill="#1d4ed8"/>
+                                <!-- Left pupil -->
+                                <circle  cx="100" cy="122" r="8"  fill="#0f0f1a"/>
+                                <!-- Left shine big -->
+                                <circle  cx="108" cy="113" r="5.5" fill="white"/>
+                                <!-- Left shine small -->
+                                <circle  cx="93"  cy="130" r="3"   fill="white" opacity="0.55"/>
+
+                                <!-- Right eye white -->
+                                <ellipse cx="160" cy="120" rx="22" ry="24" fill="white"/>
+                                <!-- Right iris -->
+                                <circle  cx="160" cy="122" r="14" fill="#1d4ed8"/>
+                                <!-- Right pupil -->
+                                <circle  cx="160" cy="122" r="8"  fill="#0f0f1a"/>
+                                <!-- Right shine big -->
+                                <circle  cx="168" cy="113" r="5.5" fill="white"/>
+                                <!-- Right shine small -->
+                                <circle  cx="153" cy="130" r="3"   fill="white" opacity="0.55"/>
+
+                                <!-- Raised excited brows -->
+                                <path d="M 78 98 Q 100 88 122 98"  stroke="#6b2e0e" stroke-width="4" fill="none" stroke-linecap="round"/>
+                                <path d="M 138 98 Q 160 88 182 98" stroke="#6b2e0e" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+                                <!-- Sparkle lashes (excitement) -->
+                                <line x1="80"  y1="108" x2="74"  y2="100" stroke="#6b2e0e" stroke-width="2" stroke-linecap="round"/>
+                                <line x1="180" y1="108" x2="186" y2="100" stroke="#6b2e0e" stroke-width="2" stroke-linecap="round"/>
+                            </g>
+
+                            <!-- Nose -->
+                            <ellipse cx="130" cy="153" rx="15" ry="11" fill="#2d0e06"/>
+                            <!-- Nose highlight -->
+                            <ellipse cx="125" cy="148" rx="6"  ry="4"  fill="rgba(255,255,255,0.28)"/>
+
+                            <!-- Mouth (gentle smile) -->
+                            <path d="M 112 165 Q 130 182 148 165" stroke="#2d0e06" stroke-width="3.8" fill="none" stroke-linecap="round"/>
+                            <path d="M 112 165 Q 107 170 109 176" stroke="#2d0e06" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+                            <path d="M 148 165 Q 153 170 151 176" stroke="#2d0e06" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+
+                            <!-- Blush cheeks -->
+                            <ellipse cx="72"  cy="148" rx="22" ry="15" fill="#e87070" opacity="0.24"/>
+                            <ellipse cx="188" cy="148" rx="22" ry="15" fill="#e87070" opacity="0.24"/>
+                        </svg>
+                    </div>
+
+                    <!-- ── BACK FACE ── -->
+                    <div class="bear-back">
+                        <svg viewBox="0 0 260 300" xmlns="http://www.w3.org/2000/svg" width="260" height="300">
+                            <defs>
+                                <radialGradient id="bBodyB" cx="50%" cy="35%" r="65%">
+                                    <stop offset="0%"   stop-color="#c97d3e"/>
+                                    <stop offset="100%" stop-color="#7a3d14"/>
+                                </radialGradient>
+                            </defs>
+
+                            <!-- Ground shadow -->
+                            <ellipse cx="130" cy="297" rx="75" ry="9" fill="#000" opacity="0.2"/>
+
+                            <!-- Body -->
+                            <ellipse cx="130" cy="264" rx="84" ry="52" fill="url(#bBodyB)"/>
+
+                            <!-- left arm (back view) -->
+                            <ellipse cx="46"  cy="252" rx="28" ry="17" fill="#9e4f22" transform="rotate(-38 46 252)"/>
+                            <ellipse cx="28"  cy="268" rx="22" ry="17" fill="#8b4513"/>
+
+                            <!-- right arm (back view) -->
+                            <ellipse cx="214" cy="252" rx="28" ry="17" fill="#9e4f22" transform="rotate(38 214 252)"/>
+                            <ellipse cx="232" cy="268" rx="22" ry="17" fill="#8b4513"/>
+
+                            <!-- feet -->
+                            <ellipse cx="100" cy="290" rx="32" ry="14" fill="#8b4513"/>
+                            <ellipse cx="160" cy="290" rx="32" ry="14" fill="#8b4513"/>
+
+                            <!-- Tail (fluffy) -->
+                            <circle  cx="130" cy="218" r="20" fill="#c07838" opacity="0.9"/>
+                            <circle  cx="130" cy="218" r="14" fill="#d4944a" opacity="0.7"/>
+
+                            <!-- Ears (back – outer only) -->
+                            <circle cx="54"  cy="54" r="40" fill="#9e4f22"/>
+                            <circle cx="206" cy="54" r="40" fill="#9e4f22"/>
+
+                            <!-- Head (back of skull) -->
+                            <circle cx="130" cy="122" r="96" fill="url(#bBodyB)"/>
+
+                            <!-- Fur concentric rings on back of head -->
+                            <circle cx="130" cy="108" r="56" fill="#9e4f22" opacity="0.22"/>
+                            <circle cx="130" cy="108" r="34" fill="#8b4513" opacity="0.22"/>
+                            <circle cx="130" cy="108" r="18" fill="#7a3b0f" opacity="0.22"/>
+
+                            <!-- Swirl on back of head -->
+                            <path d="M 130 120 Q 148 104 130 90 Q 112 76 120 92 Q 128 108 142 102"
+                                  stroke="#6b2e0e" stroke-width="3" fill="none" opacity="0.45" stroke-linecap="round"/>
+
+                            <!-- Big "no peek" emoji -->
+                            <text x="130" y="136"
+                                  text-anchor="middle" dominant-baseline="middle"
+                                  font-size="52" opacity="0.95">🙈</text>
+
+                            <!-- "No peeking!" label -->
+                            <rect x="88" y="165" width="84" height="24" rx="12" fill="rgba(0,0,0,0.35)"/>
+                            <text x="130" y="177"
+                                  text-anchor="middle" dominant-baseline="middle"
+                                  font-size="10" font-weight="700" fill="rgba(255,255,255,0.75)"
+                                  font-family="Inter,sans-serif" letter-spacing="0.5">No Peeking!</text>
+                        </svg>
+                    </div>
+
+                </div><!-- /bear-inner -->
+            </div><!-- /bear-float -->
+        </div><!-- /bear-stage -->
+
+        <div class="panel-footer">
+            <div class="privacy-badge">🔐 Your data is always safe</div>
+        </div>
+
+    </div><!-- /char-panel -->
+
+    <!-- ================================================================
+         RIGHT PANEL — Login form
+    ================================================================ -->
+    <div class="card">
+        <div class="logo">
+            <h1>FinBot</h1>
+            <p>Sign in to your account</p>
+        </div>
+
+        <form id="loginForm" novalidate>
+            <div class="form-group">
+                <label for="loginEmail">Email</label>
+                <div class="input-wrap">
+                    <span class="input-icon">✉</span>
+                    <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+                </div>
+                <div class="msg" id="loginEmailMsg"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="loginPassword">Password</label>
+                <div class="input-wrap">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+                    <button type="button" class="toggle-pw" id="togglePwBtn" onclick="togglePw('loginPassword',this)">Show</button>
+                </div>
+                <div class="msg" id="loginPasswordMsg"></div>
+            </div>
+
+            <div class="row">
+                <label class="check-label">
+                    <input type="checkbox" id="remember"> Remember me
+                </label>
+                <a href="#" class="link">Forgot password?</a>
+            </div>
+
+            <div class="msg" id="loginFormMsg"></div>
+            <button class="btn" id="loginBtn" type="submit">Sign In</button>
+        </form>
+
+        <div class="footer-note">
+            Don't have an account? <a onclick="openSignup()">Sign up</a>
+        </div>
+    </div>
+
+</div><!-- /page-wrapper -->
+
+<!-- ================================================================
+     SIGN UP MODAL
+================================================================ -->
+<div class="overlay" id="signupOverlay">
+    <div class="modal">
+        <button class="modal-close" onclick="closeSignup()">✕</button>
+        <h2>Create Account</h2>
+        <form id="signupForm" novalidate>
+            <div class="form-group">
+                <label for="regEmail">Email</label>
+                <div class="input-wrap">
+                    <span class="input-icon">✉</span>
+                    <input type="email" id="regEmail" placeholder="you@example.com" autocomplete="email">
+                </div>
+                <div class="msg" id="regEmailMsg"></div>
+            </div>
+            <div class="form-group">
+                <label for="regPassword">Password <span style="color:var(--muted);font-size:0.74rem;text-transform:none;font-weight:400;">(min 6 chars)</span></label>
+                <div class="input-wrap">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" id="regPassword" placeholder="Create a password" autocomplete="new-password">
+                    <button type="button" class="toggle-pw" onclick="togglePw('regPassword',this)">Show</button>
+                </div>
+                <div class="msg" id="regPasswordMsg"></div>
+            </div>
+            <div class="form-group">
+                <label for="regConfirm">Confirm Password</label>
+                <div class="input-wrap">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" id="regConfirm" placeholder="Re-enter password" autocomplete="new-password">
+                    <button type="button" class="toggle-pw" onclick="togglePw('regConfirm',this)">Show</button>
+                </div>
+                <div class="msg" id="regConfirmMsg"></div>
+            </div>
+            <div class="msg" id="regFormMsg"></div>
+            <button class="btn" id="regBtn" type="submit">Create Account</button>
+        </form>
+    </div>
+</div>
+
+<!-- ================================================================
+     SCRIPT
+================================================================ -->
+<script>
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    /* ────────────────────────────────────────────
+       STATUS PILL HELPER
+    ──────────────────────────────────────────── */
+    function setStatus(text, dotColor) {
+        const pill = document.getElementById('statusPill');
+        pill.classList.add('fading');
+        setTimeout(() => {
+            document.getElementById('statusText').textContent = text;
+            document.getElementById('sdot').style.color = dotColor;
+            pill.classList.remove('fading');
+        }, 300);
+    }
+
+    /* ────────────────────────────────────────────
+       BEAR CONTROLLER
+    ──────────────────────────────────────────── */
+    const Bear = {
+        inner:     document.getElementById('bearInner'),
+        float:     document.getElementById('bearFloat'),
+        eyesIdle:  document.getElementById('eyes-idle'),
+        eyesWatch: document.getElementById('eyes-watch'),
+        bubble:    document.getElementById('bearBubble'),
+
+        _state: 'idle',
+        _bubbleTimer: null,
+
+        _showBubble(text) {
+            clearTimeout(this._bubbleTimer);
+            this.bubble.textContent = text;
+            this.bubble.classList.add('show');
+            this._bubbleTimer = setTimeout(() => {
+                this.bubble.classList.remove('show');
+            }, 2200);
+        },
+
+        idle() {
+            if (this._state === 'idle') return;
+            this._state = 'idle';
+            this.float.classList.remove('paused');
+            this.inner.style.transform = '';
+            this.eyesIdle.style.display = '';
+            this.eyesWatch.style.display = 'none';
+            this.bubble.classList.remove('show');
+            setStatus('On duty & watching…', '#94a3b8');
+        },
+
+        watch() {
+            const prev = this._state;
+            this._state = 'watch';
+            this.float.classList.remove('paused');
+            this.inner.style.transform = '';
+            this.eyesIdle.style.display = 'none';
+            this.eyesWatch.style.display = '';
+            if (prev !== 'watch') this._showBubble('Hello! Welcome back 👋');
+            setStatus('👀 Watching you type…', '#4ade80');
+        },
+
+        hide() {
+            if (this._state === 'hiding') return;
+            this._state = 'hiding';
+            this.float.classList.add('paused');
+            this.inner.style.transform = 'rotateY(180deg)';
+            this.bubble.classList.remove('show');
+            setStatus('🙈 Privacy mode ON!', '#f87171');
+        },
+
+        peek(showing) {
+            // "Show password" toggled — half-turn tease
+            if (showing) {
+                this.inner.style.transition = 'transform 0.5s cubic-bezier(0.34,1.1,0.64,1)';
+                this.inner.style.transform  = 'rotateY(100deg)';
+                setStatus('😏 Almost peeked…', '#fbbf24');
+            } else {
+                this.inner.style.transition = 'transform 0.95s cubic-bezier(0.34,1.1,0.64,1)';
+                this.inner.style.transform  = 'rotateY(180deg)';
+                setStatus('🙈 Privacy mode ON!', '#f87171');
+            }
+        }
+    };
+
+    /* ────────────────────────────────────────────
+       INPUT EVENTS
+    ──────────────────────────────────────────── */
+    const loginEmail = document.getElementById('loginEmail');
+    const loginPw    = document.getElementById('loginPassword');
+
+    loginEmail.addEventListener('focus', () => Bear.watch());
+    loginEmail.addEventListener('blur',  () => {
+        if (document.activeElement !== loginPw) Bear.idle();
+    });
+
+    loginPw.addEventListener('focus', () => Bear.hide());
+    loginPw.addEventListener('blur',  () => Bear.idle());
+
+    /* ────────────────────────────────────────────
+       TOGGLE PASSWORD
+    ──────────────────────────────────────────── */
+    function togglePw(id, btn) {
+        const inp = document.getElementById(id);
+        const reveal = inp.type === 'password';
+        inp.type = reveal ? 'text' : 'password';
+        btn.textContent = reveal ? 'Hide' : 'Show';
+        if (id === 'loginPassword') {
+            // Reset transition before peeking
+            Bear.inner.style.transition = '';
+            Bear.peek(reveal);
+        }
+    }
+
+    /* ────────────────────────────────────────────
+       FORM HELPERS
+    ──────────────────────────────────────────── */
+    function setMsg(id, text, type) {
+        const el = document.getElementById(id);
+        el.textContent = text; el.className = 'msg ' + type;
+    }
+    function clearMsg(id) {
+        const el = document.getElementById(id);
+        el.textContent = ''; el.className = 'msg';
+    }
+    function markErr(inputId, msgId, text) {
+        document.getElementById(inputId).classList.add('err');
+        setMsg(msgId, text, 'error');
+    }
+    function clearErr(inputId, msgId) {
+        document.getElementById(inputId).classList.remove('err');
+        clearMsg(msgId);
+    }
+
+    function openSignup()  { document.getElementById('signupOverlay').classList.add('open'); }
+    function closeSignup() {
+        document.getElementById('signupOverlay').classList.remove('open');
+        ['regEmail','regPassword','regConfirm'].forEach(id => {
+            document.getElementById(id).value = '';
+            document.getElementById(id).classList.remove('err');
+        });
+        ['regEmailMsg','regPasswordMsg','regConfirmMsg','regFormMsg'].forEach(clearMsg);
+    }
+    document.getElementById('signupOverlay').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeSignup();
+    });
+
+    [['loginEmail','loginEmailMsg'],['loginPassword','loginPasswordMsg']].forEach(([inp,msg]) => {
+        document.getElementById(inp).addEventListener('input', () => { clearErr(inp,msg); clearMsg('loginFormMsg'); });
+    });
+    [['regEmail','regEmailMsg'],['regPassword','regPasswordMsg'],['regConfirm','regConfirmMsg']].forEach(([inp,msg]) => {
+        document.getElementById(inp).addEventListener('input', () => { clearErr(inp,msg); clearMsg('regFormMsg'); });
+    });
+
+    /* ────────────────────────────────────────────
+       LOGIN SUBMIT
+    ──────────────────────────────────────────── */
+    document.getElementById('loginForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        const email    = loginEmail.value.trim();
+        const password = loginPw.value;
+        let ok = true;
+        if (!emailRe.test(email)) { markErr('loginEmail','loginEmailMsg','Enter a valid email.'); ok = false; }
+        if (!password)            { markErr('loginPassword','loginPasswordMsg','Password is required.'); ok = false; }
+        if (!ok) return;
+
+        const btn = document.getElementById('loginBtn');
+        btn.textContent = 'Signing in…'; btn.disabled = true;
+        try {
+            const res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email,password}) });
+            const data = await res.json();
+            if (data.success) {
+                setMsg('loginFormMsg', '✅ ' + data.message, 'success');
+                setTimeout(() => { window.location.href = '/dashboard'; }, 700);
+            } else {
+                setMsg('loginFormMsg', '❌ ' + data.message, 'error');
+                btn.textContent = 'Sign In'; btn.disabled = false;
+            }
+        } catch {
+            setMsg('loginFormMsg', '❌ Server error. Please try again.', 'error');
+            btn.textContent = 'Sign In'; btn.disabled = false;
+        }
+    });
+
+    /* ────────────────────────────────────────────
+       REGISTER SUBMIT
+    ──────────────────────────────────────────── */
+    document.getElementById('signupForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        const email    = document.getElementById('regEmail').value.trim();
+        const password = document.getElementById('regPassword').value;
+        const confirm  = document.getElementById('regConfirm').value;
+        let ok = true;
+        if (!emailRe.test(email))  { markErr('regEmail','regEmailMsg','Enter a valid email.'); ok = false; }
+        if (password.length < 6)   { markErr('regPassword','regPasswordMsg','Minimum 6 characters.'); ok = false; }
+        if (password !== confirm)  { markErr('regConfirm','regConfirmMsg','Passwords do not match.'); ok = false; }
+        if (!ok) return;
+
+        const btn = document.getElementById('regBtn');
+        btn.textContent = 'Creating…'; btn.disabled = true;
+        try {
+            const res  = await fetch('/api/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email,password}) });
+            const data = await res.json();
+            if (data.success) {
+                setMsg('regFormMsg', '✅ ' + data.message, 'success');
+                setTimeout(() => { closeSignup(); loginEmail.value = email; loginPw.focus(); }, 1500);
+            } else {
+                setMsg('regFormMsg', '❌ ' + data.message, 'error');
+            }
+        } catch {
+            setMsg('regFormMsg', '❌ Server error. Please try again.', 'error');
+        }
+        btn.textContent = 'Create Account'; btn.disabled = false;
+    });
+</script>
+</body>
+</html>
