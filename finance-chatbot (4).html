@@ -1,963 +1,1392 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FinBot – Your Finance Assistant</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a0d0f;
-    --surface: #111518;
-    --surface2: #181d22;
-    --border: #1e2630;
-    --accent: #00e5a0;
-    --accent2: #0099ff;
-    --warn: #ff6b35;
-    --text: #e8edf2;
-    --muted: #5a6a7a;
-    --user-bubble: #0d2235;
-    --bot-bubble: #0f1a14;
-    --font-head: 'Syne', sans-serif;
-    --font-mono: 'DM Mono', monospace;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-mono);
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  /* Header */
-  header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px 24px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .logo-icon {
-    width: 36px; height: 36px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-  }
-
-  .header-text h1 {
-    font-family: var(--font-head);
-    font-size: 18px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  .header-text p {
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-
-  .status-dot {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    color: var(--muted);
-  }
-
-  .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
-  /* Ledger strip */
-  .ledger-strip {
-    display: flex;
-    gap: 1px;
-    background: var(--border);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .ledger-strip::-webkit-scrollbar { display: none; }
-
-  .ledger-item {
-    background: var(--surface2);
-    padding: 10px 18px;
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    color: var(--muted);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .ledger-item span {
-    display: block;
-    font-size: 15px;
-    font-weight: 400;
-    margin-top: 2px;
-    letter-spacing: 0;
-  }
-
-  .ledger-item.income span { color: var(--accent); }
-  .ledger-item.expense span { color: var(--warn); }
-  .ledger-item.balance span { color: var(--accent2); }
-
-  /* Chat area */
-  .chat-area {
-    flex: 1;
-    overflow-y: auto;
-    padding: 24px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-  }
-
-  .chat-area::-webkit-scrollbar { width: 4px; }
-  .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-  /* Messages */
-  .msg-row {
-    display: flex;
-    gap: 10px;
-    max-width: 760px;
-    width: 100%;
-    animation: fadeSlide 0.3s ease;
-  }
-
-  @keyframes fadeSlide {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .msg-row.user { flex-direction: row-reverse; margin-left: auto; }
-
-  .avatar {
-    width: 30px; height: 30px;
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-
-  .avatar.bot { background: linear-gradient(135deg, #003322, #001a33); border: 1px solid var(--border); }
-  .avatar.user { background: var(--user-bubble); border: 1px solid #1a3a5a; }
-
-  .bubble {
-    padding: 12px 16px;
-    border-radius: 12px;
-    font-size: 13.5px;
-    line-height: 1.65;
-    max-width: calc(100% - 44px);
-  }
-
-  .msg-row.bot .bubble {
-    background: var(--bot-bubble);
-    border: 1px solid var(--border);
-    border-radius: 4px 12px 12px 12px;
-    color: var(--text);
-  }
-
-  .msg-row.user .bubble {
-    background: var(--user-bubble);
-    border: 1px solid #1a3a5a;
-    border-radius: 12px 4px 12px 12px;
-    color: var(--text);
-  }
-
-  /* Typing indicator */
-  .typing-indicator {
-    display: flex;
-    gap: 5px;
-    padding: 14px 16px;
-    align-items: center;
-  }
-
-  .typing-indicator span {
-    width: 7px; height: 7px;
-    background: var(--accent);
-    border-radius: 50%;
-    animation: bounce 1.2s infinite;
-    opacity: 0.5;
-  }
-
-  .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-  .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-
-  @keyframes bounce {
-    0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
-    40% { transform: translateY(-6px); opacity: 1; }
-  }
-
-  /* Chips */
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 0 16px 8px;
-    flex-shrink: 0;
-  }
-
-  .chip {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    font-family: var(--font-mono);
-    font-size: 11.5px;
-    padding: 7px 13px;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-  }
-
-  .chip:hover {
-    background: #0d2a1f;
-    border-color: var(--accent);
-    color: var(--accent);
-    transform: translateY(-1px);
-  }
-
-  /* Input bar */
-  .input-bar {
-    padding: 12px 16px 16px;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .input-wrap {
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 14px;
-    transition: border-color 0.2s;
-  }
-
-  .input-wrap:focus-within {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(0, 229, 160, 0.08);
-  }
-
-  textarea {
-    flex: 1;
-    background: none;
-    border: none;
-    outline: none;
-    color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 13.5px;
-    line-height: 1.5;
-    resize: none;
-    max-height: 120px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-  }
-
-  textarea::placeholder { color: var(--muted); }
-
-  button.send-btn {
-    width: 34px; height: 34px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border: none;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    transition: opacity 0.2s, transform 0.15s;
-    font-size: 16px;
-  }
-
-  button.send-btn:hover { opacity: 0.85; transform: scale(1.05); }
-  button.send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
-
-  /* Table rendering in bot messages */
-  .bubble table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 10px 0;
-    font-size: 12px;
-  }
-
-  .bubble th {
-    background: #0d1f17;
-    padding: 6px 10px;
-    text-align: left;
-    color: var(--accent);
-    font-weight: 400;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    font-size: 10px;
-  }
-
-  .bubble td {
-    padding: 6px 10px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-  }
-
-  .bubble td.pos { color: var(--accent); }
-  .bubble td.neg { color: var(--warn); }
-
-  .bubble code {
-    background: #0d1a0d;
-    color: var(--accent);
-    padding: 1px 5px;
-    border-radius: 4px;
-    font-size: 12px;
-  }
-
-  .bubble strong { color: var(--accent2); font-weight: 600; }
-
-  /* Welcome card */
-  .welcome-card {
-    margin: 8px auto;
-    max-width: 520px;
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px;
-    text-align: center;
-  }
-
-  .welcome-card .big-icon {
-    font-size: 36px;
-    margin-bottom: 12px;
-  }
-
-  .welcome-card h2 {
-    font-family: var(--font-head);
-    font-size: 20px;
-    font-weight: 800;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 8px;
-  }
-
-  .welcome-card p {
-    font-size: 12.5px;
-    color: var(--muted);
-    line-height: 1.6;
-  }
-
-  /* API Key bar */
-  .apikey-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 20px;
-    background: #0d1a0f;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .apikey-bar label {
-    font-size: 10px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--muted);
-    white-space: nowrap;
-  }
-
-  .apikey-bar input {
-    flex: 1;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--text);
-    outline: none;
-    min-width: 0;
-    transition: border-color 0.2s;
-  }
-
-  .apikey-bar input:focus { border-color: var(--accent); }
-  .apikey-bar input::placeholder { color: var(--muted); }
-
-  .apikey-bar .save-btn {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border: none;
-    border-radius: 6px;
-    padding: 6px 14px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: #000;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: opacity 0.2s;
-  }
-
-  .apikey-bar .save-btn:hover { opacity: 0.85; }
-
-  .apikey-status {
-    font-size: 10px;
-    white-space: nowrap;
-  }
-
-  /* Score Panel */
-  .score-panel {
-    background: var(--surface2);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 20px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    flex-shrink: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .score-panel::-webkit-scrollbar { display: none; }
-
-  /* Gauge */
-  .gauge-wrap {
-    position: relative;
-    flex-shrink: 0;
-    width: 80px;
-    height: 48px;
-  }
-
-  .gauge-wrap svg { width: 80px; height: 48px; }
-
-  .gauge-score-label {
-    position: absolute;
-    bottom: 0; left: 50%;
-    transform: translateX(-50%);
-    font-family: var(--font-head);
-    font-size: 17px;
-    font-weight: 800;
-    line-height: 1;
-    text-align: center;
-    pointer-events: none;
-  }
-
-  .gauge-title {
-    font-size: 9px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    text-align: center;
-    margin-top: 2px;
-  }
-
-  .score-divider {
-    width: 1px;
-    height: 44px;
-    background: var(--border);
-    flex-shrink: 0;
-  }
-
-  /* Score metrics */
-  .score-metrics {
-    display: flex;
-    gap: 18px;
-    flex: 1;
-    flex-wrap: wrap;
-  }
-
-  .score-metric {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 80px;
-  }
-
-  .score-metric .sm-label {
-    font-size: 9px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .score-metric .sm-value {
-    font-size: 14px;
-    font-family: var(--font-head);
-    font-weight: 700;
-  }
-
-  .score-metric .sm-bar {
-    height: 3px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-    width: 80px;
-  }
-
-  .score-metric .sm-bar-fill {
-    height: 100%;
-    border-radius: 2px;
-    transition: width 0.6s cubic-bezier(.22,.68,0,1.2);
-    width: 0%;
-  }
-
-  .sm-value.income-color  { color: var(--accent); }
-  .sm-value.expense-color { color: var(--warn); }
-  .sm-value.saving-color  { color: var(--accent2); }
-
-  .sm-bar-fill.income-fill  { background: var(--accent); }
-  .sm-bar-fill.expense-fill { background: var(--warn); }
-  .sm-bar-fill.saving-fill  { background: var(--accent2); }
-
-  /* Score badge */
-  .score-badge {
-    margin-left: auto;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-  }
-
-  .score-badge .grade {
-    font-family: var(--font-head);
-    font-size: 22px;
-    font-weight: 800;
-    line-height: 1;
-  }
-
-  .score-badge .grade-label {
-    font-size: 9px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  /* Responsive */
-  @media (max-width: 520px) {
-    .chips { gap: 6px; }
-    .chip { font-size: 11px; padding: 6px 10px; }
-    .score-panel { padding: 10px 14px; gap: 14px; }
-    .score-metrics { gap: 12px; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinBot – Your Finance Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #080b0e;
+      --surface: #0e1318;
+      --surface2: #141c23;
+      --surface3: #1a2530;
+      --border: #1f2e3d;
+      --border2: #263545;
+      --accent: #00d4aa;
+      --accent-dim: rgba(0,212,170,0.12);
+      --accent2: #3b9eff;
+      --accent2-dim: rgba(59,158,255,0.12);
+      --warn: #ff7043;
+      --warn-dim: rgba(255,112,67,0.12);
+      --success: #00d4aa;
+      --text: #dce8f0;
+      --text2: #8fa3b8;
+      --muted: #4a6070;
+      --user-bubble: #0c1e30;
+      --bot-bubble: #0b1710;
+      --font-head: 'Space Grotesk', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius: 10px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0,212,170,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 100% 80%, rgba(59,158,255,0.04) 0%, transparent 60%);
+    }
+
+    /* ── HEADER ─────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2), transparent);
+      opacity: 0.4;
+    }
+
+    .logo-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      box-shadow: 0 0 16px rgba(0,212,170,0.3);
+    }
+
+    .header-text h1 {
+      font-family: var(--font-head);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-text p {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10.5px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+      animation: pulse 2.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--accent); }
+      50% { opacity: 0.4; box-shadow: none; }
+    }
+
+    .clear-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      padding: 5px 11px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .clear-btn:hover {
+      background: var(--warn-dim);
+      border-color: var(--warn);
+      color: var(--warn);
+    }
+
+    /* ── LEDGER STRIP ────────────────────────────────────── */
+    .ledger-strip {
+      display: flex;
+      gap: 1px;
+      background: var(--border);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .ledger-strip::-webkit-scrollbar { display: none; }
+
+    .ledger-item {
+      background: var(--surface2);
+      padding: 9px 18px;
+      font-size: 9.5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+
+    .ledger-item span {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-top: 3px;
+      letter-spacing: -0.01em;
+      font-family: var(--font-head);
+    }
+
+    .ledger-item.income span { color: var(--accent); }
+    .ledger-item.expense span { color: var(--warn); }
+    .ledger-item.balance span { color: var(--accent2); }
+    .ledger-item.neutral span { color: var(--text); }
+
+    /* ── SCORE PANEL ─────────────────────────────────────── */
+    .score-panel {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-shrink: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .score-panel::-webkit-scrollbar { display: none; }
+
+    .gauge-wrap {
+      position: relative;
+      flex-shrink: 0;
+      width: 80px; height: 48px;
+    }
+
+    .gauge-wrap svg { width: 80px; height: 48px; }
+
+    .gauge-score-label {
+      position: absolute;
+      bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-head);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .gauge-title {
+      font-size: 8.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 2px;
+    }
+
+    .score-divider {
+      width: 1px; height: 44px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .score-metrics {
+      display: flex;
+      gap: 18px;
+      flex: 1;
+      flex-wrap: wrap;
+    }
+
+    .score-metric {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 80px;
+    }
+
+    .sm-label { font-size: 8.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+    .sm-value {
+      font-size: 13px;
+      font-family: var(--font-head);
+      font-weight: 600;
+      transition: all 0.4s;
+    }
+
+    .sm-bar {
+      height: 2px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      width: 80px;
+    }
+
+    .sm-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.7s cubic-bezier(.22,.68,0,1.2);
+      width: 0%;
+    }
+
+    .sm-value.income-color { color: var(--accent); }
+    .sm-value.expense-color { color: var(--warn); }
+    .sm-value.saving-color { color: var(--accent2); }
+    .sm-bar-fill.income-fill { background: var(--accent); }
+    .sm-bar-fill.expense-fill { background: var(--warn); }
+    .sm-bar-fill.saving-fill { background: var(--accent2); }
+
+    .score-badge {
+      margin-left: auto;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 1px;
+    }
+
+    .score-badge .grade {
+      font-family: var(--font-head);
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+      transition: color 0.5s;
+    }
+
+    .score-badge .grade-label {
+      font-size: 8.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ── CHAT AREA ───────────────────────────────────────── */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .chat-area::-webkit-scrollbar { width: 3px; }
+    .chat-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ── MESSAGES ────────────────────────────────────────── */
+    .msg-row {
+      display: flex;
+      gap: 10px;
+      max-width: 720px;
+      width: 100%;
+      animation: slideUp 0.28s cubic-bezier(.22,.68,0,1);
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-row.user { flex-direction: row-reverse; margin-left: auto; }
+
+    .avatar {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    .avatar.bot {
+      background: linear-gradient(135deg, #001f14, #00100d);
+      border: 1px solid rgba(0,212,170,0.2);
+    }
+
+    .avatar.user {
+      background: var(--user-bubble);
+      border: 1px solid rgba(59,158,255,0.2);
+    }
+
+    .bubble {
+      padding: 11px 15px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.7;
+      max-width: calc(100% - 40px);
+    }
+
+    .msg-row.bot .bubble {
+      background: var(--bot-bubble);
+      border: 1px solid rgba(0,212,170,0.1);
+      border-radius: 3px 12px 12px 12px;
+      color: var(--text);
+    }
+
+    .msg-row.user .bubble {
+      background: var(--user-bubble);
+      border: 1px solid rgba(59,158,255,0.15);
+      border-radius: 12px 3px 12px 12px;
+      color: var(--text);
+    }
+
+    /* Timestamp */
+    .msg-time {
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 3px;
+      padding: 0 4px;
+      letter-spacing: 0.04em;
+    }
+
+    .msg-row.user .msg-time { text-align: right; }
+
+    /* ── TYPING ──────────────────────────────────────────── */
+    .typing-indicator {
+      display: flex; gap: 5px;
+      padding: 14px 16px;
+      align-items: center;
+    }
+
+    .typing-indicator span {
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+      opacity: 0.5;
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+      40% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* ── CHIPS ───────────────────────────────────────────── */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 6px 16px 8px;
+      flex-shrink: 0;
+    }
+
+    .chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.18s;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .chip:hover {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    /* ── INPUT BAR ───────────────────────────────────────── */
+    .input-bar {
+      padding: 10px 14px 14px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .input-wrap {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 9px 12px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(0,212,170,0.07);
+    }
+
+    textarea {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.55;
+      resize: none;
+      max-height: 110px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+
+    textarea::placeholder { color: var(--muted); }
+
+    button.send-btn {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+      font-size: 15px;
+      box-shadow: 0 2px 10px rgba(0,212,170,0.25);
+    }
+
+    button.send-btn:hover { opacity: 0.85; transform: scale(1.07); }
+    button.send-btn:disabled { opacity: 0.25; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── BUBBLE CONTENT STYLES ───────────────────────────── */
+    .bubble table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 11.5px;
+    }
+
+    .bubble th {
+      background: rgba(0,212,170,0.07);
+      padding: 5px 10px;
+      text-align: left;
+      color: var(--accent);
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 9.5px;
+    }
+
+    .bubble td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .bubble td.pos { color: var(--accent); }
+    .bubble td.neg { color: var(--warn); }
+
+    .bubble code {
+      background: rgba(0,212,170,0.08);
+      color: var(--accent);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11.5px;
+    }
+
+    .bubble strong { color: var(--accent2); font-weight: 600; }
+
+    /* Transaction card rendered inside bubble */
+    .tx-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0,212,170,0.06);
+      border: 1px solid rgba(0,212,170,0.15);
+      border-radius: 8px;
+      padding: 9px 12px;
+      margin-top: 10px;
+    }
+
+    .tx-card.expense {
+      background: rgba(255,112,67,0.06);
+      border-color: rgba(255,112,67,0.15);
+    }
+
+    .tx-card-icon { font-size: 18px; }
+
+    .tx-card-info { flex: 1; }
+    .tx-card-info .tx-desc { font-size: 12px; color: var(--text); font-weight: 500; }
+    .tx-card-info .tx-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    .tx-card-amount {
+      font-family: var(--font-head);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .tx-card-amount.income { color: var(--accent); }
+    .tx-card-amount.expense { color: var(--warn); }
+
+    /* ── WELCOME CARD ────────────────────────────────────── */
+    .welcome-card {
+      margin: 4px auto;
+      max-width: 480px;
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      text-align: center;
+    }
+
+    .welcome-card .big-icon { font-size: 32px; margin-bottom: 10px; }
+
+    .welcome-card h2 {
+      font-family: var(--font-head);
+      font-size: 18px;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    .welcome-card p {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    /* ── TOAST NOTIFICATIONS ─────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 80px; right: 20px;
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 12px;
+      color: var(--text);
+      z-index: 1000;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.25s;
+      pointer-events: none;
+      max-width: 260px;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── MODAL (Transaction History) ─────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow);
+      animation: slideUp 0.25s ease;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-header h3 {
+      font-family: var(--font-head);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body {
+      overflow-y: auto;
+      padding: 12px 16px;
+      flex: 1;
+    }
+
+    .tx-list-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tx-list-item:last-child { border-bottom: none; }
+
+    .tx-list-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .tx-list-dot.income { background: var(--accent); }
+    .tx-list-dot.expense { background: var(--warn); }
+
+    .tx-list-info { flex: 1; }
+    .tx-list-info .tl-desc { font-size: 12.5px; color: var(--text); }
+    .tx-list-info .tl-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    .tx-list-amount {
+      font-family: var(--font-head);
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .tx-list-amount.income { color: var(--accent); }
+    .tx-list-amount.expense { color: var(--warn); }
+
+    .tx-delete-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      padding: 2px 5px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .tx-delete-btn:hover { color: var(--warn); background: var(--warn-dim); }
+
+    .modal-empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 30px;
+    }
+
+    /* ── RESPONSIVE ──────────────────────────────────────── */
+    @media (max-width: 520px) {
+      .chips { gap: 5px; }
+      .chip { font-size: 10px; padding: 5px 10px; }
+      .score-panel { padding: 8px 12px; gap: 12px; }
+    }
+  </style>
 </head>
+
 <body>
 
-<header>
-  <div class="logo-icon">💹</div>
-  <div class="header-text">
-    <h1>FinBot</h1>
-    <p>AI Finance Assistant</p>
-  </div>
-  <div class="status-dot">
-    <div class="dot"></div>
-    <span>Online</span>
-  </div>
-</header>
-
-<!-- API Key Bar (hidden - key is preconfigured) -->
-<div class="apikey-bar" style="display:none">
-  <label>🔑 API Key</label>
-  <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
-  <button class="save-btn" onclick="saveApiKey()">Connect</button>
-  <span class="apikey-status" id="apiKeyStatus" style="color:var(--muted)">Not connected</span>
-</div>
-
-<div class="ledger-strip" id="ledger">
-  <div class="ledger-item income">TOTAL INCOME <span id="totalIncome">₹0</span></div>
-  <div class="ledger-item expense">TOTAL EXPENSES <span id="totalExpenses">₹0</span></div>
-  <div class="ledger-item balance">NET BALANCE <span id="netBalance">₹0</span></div>
-  <div class="ledger-item">TRANSACTIONS <span id="txCount">0</span></div>
-  <div class="ledger-item">TOP CATEGORY <span id="topCat">—</span></div>
-</div>
-
-<!-- Financial Score Panel -->
-<div class="score-panel" id="scorePanel">
-  <div>
-    <div class="gauge-wrap">
-      <svg viewBox="0 0 80 48" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8,44 A32,32 0 0,1 72,44" fill="none" stroke="#1e2630" stroke-width="7" stroke-linecap="round"/>
-        <path id="gaugeFill" d="M8,44 A32,32 0 0,1 72,44" fill="none" stroke="#00e5a0" stroke-width="7"
-          stroke-linecap="round" stroke-dasharray="100.53" stroke-dashoffset="100.53"
-          style="transition: stroke-dashoffset 0.8s cubic-bezier(.22,.68,0,1.2), stroke 0.5s;"/>
-      </svg>
-      <div class="gauge-score-label" id="gaugeScore" style="color:#5a6a7a">—</div>
+  <!-- Header -->
+  <header>
+    <div class="logo-icon">💹</div>
+    <div class="header-text">
+      <h1>FinBot</h1>
+      <p>AI Finance Assistant</p>
     </div>
-    <div class="gauge-title">SCORE</div>
-  </div>
-
-  <div class="score-divider"></div>
-
-  <div class="score-metrics">
-    <div class="score-metric">
-      <div class="sm-label">💰 Salary / Income</div>
-      <div class="sm-value income-color" id="smIncome">₹0</div>
-      <div class="sm-bar"><div class="sm-bar-fill income-fill" id="smIncomeBar"></div></div>
+    <div class="header-actions">
+      <button class="clear-btn" onclick="openHistory()">📋 History</button>
+      <button class="clear-btn" onclick="confirmClear()">🗑 Clear</button>
+      <div class="status-dot">
+        <div class="dot"></div>
+        <span>Online</span>
+      </div>
     </div>
-    <div class="score-metric">
-      <div class="sm-label">💸 Spent</div>
-      <div class="sm-value expense-color" id="smSpent">₹0</div>
-      <div class="sm-bar"><div class="sm-bar-fill expense-fill" id="smSpentBar"></div></div>
+  </header>
+
+  <!-- Ledger Strip -->
+  <div class="ledger-strip">
+    <div class="ledger-item income">Total Income <span id="totalIncome">₹0</span></div>
+    <div class="ledger-item expense">Total Expenses <span id="totalExpenses">₹0</span></div>
+    <div class="ledger-item balance">Net Balance <span id="netBalance">₹0</span></div>
+    <div class="ledger-item neutral">Transactions <span id="txCount">0</span></div>
+    <div class="ledger-item neutral">Top Category <span id="topCat">—</span></div>
+    <div class="ledger-item neutral">Savings Rate <span id="savingsRateLabel">—</span></div>
+  </div>
+
+  <!-- Score Panel -->
+  <div class="score-panel">
+    <div>
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 80 48" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8,44 A32,32 0 0,1 72,44" fill="none" stroke="#1f2e3d" stroke-width="6" stroke-linecap="round"/>
+          <path id="gaugeFill" d="M8,44 A32,32 0 0,1 72,44" fill="none" stroke="#00d4aa" stroke-width="6"
+            stroke-linecap="round" stroke-dasharray="100.53" stroke-dashoffset="100.53"
+            style="transition: stroke-dashoffset 0.8s cubic-bezier(.22,.68,0,1.2), stroke 0.5s;"/>
+        </svg>
+        <div class="gauge-score-label" id="gaugeScore" style="color:var(--muted)">—</div>
+      </div>
+      <div class="gauge-title">Score</div>
     </div>
-    <div class="score-metric">
-      <div class="sm-label">🏦 Savings</div>
-      <div class="sm-value saving-color" id="smSavings">₹0</div>
-      <div class="sm-bar"><div class="sm-bar-fill saving-fill" id="smSavingsBar"></div></div>
+
+    <div class="score-divider"></div>
+
+    <div class="score-metrics">
+      <div class="score-metric">
+        <div class="sm-label">💰 Income</div>
+        <div class="sm-value income-color" id="smIncome">₹0</div>
+        <div class="sm-bar"><div class="sm-bar-fill income-fill" id="smIncomeBar"></div></div>
+      </div>
+      <div class="score-metric">
+        <div class="sm-label">💸 Spent</div>
+        <div class="sm-value expense-color" id="smSpent">₹0</div>
+        <div class="sm-bar"><div class="sm-bar-fill expense-fill" id="smSpentBar"></div></div>
+      </div>
+      <div class="score-metric">
+        <div class="sm-label">🏦 Savings</div>
+        <div class="sm-value saving-color" id="smSavings">₹0</div>
+        <div class="sm-bar"><div class="sm-bar-fill saving-fill" id="smSavingsBar"></div></div>
+      </div>
+      <div class="score-metric">
+        <div class="sm-label">📊 Save Rate</div>
+        <div class="sm-value" id="smRate" style="color:var(--text)">—</div>
+        <div class="sm-bar"><div class="sm-bar-fill" id="smRateBar" style="background:var(--accent2)"></div></div>
+      </div>
     </div>
-    <div class="score-metric">
-      <div class="sm-label">📊 Savings Rate</div>
-      <div class="sm-value" id="smRate" style="color:var(--text)">—</div>
-      <div class="sm-bar"><div class="sm-bar-fill" id="smRateBar" style="background:var(--accent2)"></div></div>
+
+    <div class="score-badge">
+      <div class="grade" id="gradeBadge" style="color:var(--muted)">—</div>
+      <div class="grade-label">Grade</div>
     </div>
   </div>
 
-  <div class="score-badge">
-    <div class="grade" id="gradeBadge" style="color:var(--muted)">—</div>
-    <div class="grade-label">GRADE</div>
+  <!-- Chat Area -->
+  <div class="chat-area" id="chatArea">
+    <div class="welcome-card">
+      <div class="big-icon">🧾</div>
+      <h2>Finance Tracker Bot</h2>
+      <p>Track income, log expenses, and get insights on your spending. Just chat naturally — I'll handle the numbers.</p>
+    </div>
   </div>
-</div>
 
-<div class="chat-area" id="chatArea">
-  <div class="welcome-card">
-    <div class="big-icon">🧾</div>
-    <h2>Finance Tracker Bot</h2>
-    <p>Track income, log expenses, and get insights on your spending. Just chat naturally — I'll handle the numbers.</p>
+  <!-- Quick Chips -->
+  <div class="chips" id="chips">
+    <div class="chip" onclick="sendChip(this)">Show my score</div>
+    <div class="chip" onclick="fillInput('Added income ₹')">Add income</div>
+    <div class="chip" onclick="fillInput('Spent ₹')">Log expense</div>
+    <div class="chip" onclick="sendChip(this)">Show my balance</div>
+    <div class="chip" onclick="sendChip(this)">List all transactions</div>
+    <div class="chip" onclick="sendChip(this)">Spending by category</div>
+    <div class="chip" onclick="sendChip(this)">Where am I overspending?</div>
+    <div class="chip" onclick="sendChip(this)">Give me savings tips</div>
   </div>
-</div>
 
-<div class="chips" id="chips">
-  <div class="chip" onclick="sendChip(this)">Show my financial score</div>
-  <div class="chip" onclick="sendChip(this)">Add income ₹5000 salary</div>
-  <div class="chip" onclick="sendChip(this)">Spent ₹800 on groceries</div>
-  <div class="chip" onclick="sendChip(this)">Show my balance</div>
-  <div class="chip" onclick="sendChip(this)">List all transactions</div>
-  <div class="chip" onclick="sendChip(this)">Spending by category</div>
-  <div class="chip" onclick="sendChip(this)">Where am I overspending?</div>
-</div>
-
-<div class="input-bar">
-  <div class="input-wrap">
-    <textarea id="userInput" placeholder="e.g. 'Add ₹3000 rent expense' or 'What did I spend this week?'" rows="1"
-      onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-    <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
-      ↑
-    </button>
+  <!-- Input Bar -->
+  <div class="input-bar">
+    <div class="input-wrap">
+      <textarea id="userInput"
+        placeholder="Type your message here..."
+        rows="1"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">↑</button>
+    </div>
   </div>
-</div>
 
-<script>
-// ── State ─────────────────────────────────────────────────────────────────────
-const state = {
-  transactions: [],
-  conversationHistory: []
-};
+  <!-- Toast -->
+  <div id="toast"></div>
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function formatCurrency(n) {
-  return '₹' + Math.abs(n).toLocaleString('en-IN');
-}
+  <!-- Transaction History Modal -->
+  <div class="modal-overlay" id="historyModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📋 Transaction History</h3>
+        <button class="modal-close" onclick="closeHistory()">✕</button>
+      </div>
+      <div class="modal-body" id="historyBody"></div>
+    </div>
+  </div>
 
-function updateLedger() {
-  const income   = state.transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const expenses = state.transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-  const balance  = income - expenses;
+  <script>
+    // ── Database Wipe (One-Time) ──────────────────────────────────────────────────
+    if (!localStorage.getItem('data_wiped_v1')) {
+      localStorage.removeItem('finbot_txns');
+      localStorage.removeItem('finbot_history');
+      localStorage.removeItem('finbot_chat');
+      localStorage.setItem('data_wiped_v1', 'true');
+    }
 
-  document.getElementById('totalIncome').textContent   = formatCurrency(income);
-  document.getElementById('totalExpenses').textContent = formatCurrency(expenses);
-  document.getElementById('netBalance').textContent    = (balance >= 0 ? '' : '-') + formatCurrency(balance);
-  document.getElementById('txCount').textContent       = state.transactions.length;
+    // ── State ────────────────────────────────────────────────────────────────────
+    const state = {
+      transactions:        JSON.parse(localStorage.getItem('finbot_txns')     || '[]'),
+      conversationHistory: JSON.parse(localStorage.getItem('finbot_history') || '[]'),
+      chatMessages:        JSON.parse(localStorage.getItem('finbot_chat')    || '[]')
+    };
 
-  // top category
-  const cats = {};
-  state.transactions.filter(t => t.type === 'expense').forEach(t => {
-    cats[t.category] = (cats[t.category] || 0) + t.amount;
-  });
-  const top = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
-  document.getElementById('topCat').textContent = top ? top[0] : '—';
+    const BACKEND_URL = 'http://127.0.0.1:5000/api/chat';
 
-  updateScore(income, expenses, balance);
-}
+    // ── Persistence ───────────────────────────────────────────────────────────────
+    function saveState() {
+      localStorage.setItem('finbot_txns',     JSON.stringify(state.transactions));
+      localStorage.setItem('finbot_history',  JSON.stringify(state.conversationHistory));
+      localStorage.setItem('finbot_chat',     JSON.stringify(state.chatMessages));
+    }
 
-function updateScore(income, expenses, savings) {
-  // ── Score metrics display ──────────────────────────────────────────────────
-  document.getElementById('smIncome').textContent  = formatCurrency(income);
-  document.getElementById('smSpent').textContent   = formatCurrency(expenses);
-  document.getElementById('smSavings').textContent = (savings >= 0 ? '' : '-') + formatCurrency(savings);
+    // ── Toast ─────────────────────────────────────────────────────────────────────
+    function showToast(msg, duration = 2800) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), duration);
+    }
 
-  const savingsRate = income > 0 ? Math.max(0, (savings / income) * 100) : 0;
-  document.getElementById('smRate').textContent = income > 0 ? savingsRate.toFixed(1) + '%' : '—';
+    // ── Helpers ───────────────────────────────────────────────────────────────────
+    function formatCurrency(n) {
+      return '₹' + Math.abs(n).toLocaleString('en-IN');
+    }
 
-  // Progress bars (relative to income)
-  const incPct  = 100;
-  const expPct  = income > 0 ? Math.min(100, (expenses / income) * 100) : 0;
-  const savePct = income > 0 ? Math.min(100, Math.max(0, (savings / income) * 100)) : 0;
-  const ratePct = Math.min(100, savingsRate * 2); // 50% savings = full bar
+    function nowTime() {
+      return new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    }
 
-  document.getElementById('smIncomeBar').style.width  = incPct + '%';
-  document.getElementById('smSpentBar').style.width   = expPct + '%';
-  document.getElementById('smSavingsBar').style.width = savePct + '%';
-  document.getElementById('smRateBar').style.width    = ratePct + '%';
+    function categoryEmoji(cat) {
+      const map = {
+        'Food': '🍔', 'Groceries': '🛒', 'Transport': '🚗', 'Rent': '🏠',
+        'Utilities': '💡', 'Shopping': '🛍️', 'Entertainment': '🎬',
+        'Health': '🏥', 'Education': '📚', 'Other': '📦',
+        'Salary': '💰', 'Freelance': '💻', 'Investment': '📈',
+        'Gift': '🎁', 'Other Income': '💵'
+      };
+      return map[cat] || (cat?.startsWith('Salary') || cat?.startsWith('Freelance') ? '💰' : '📦');
+    }
 
-  if (income === 0) {
-    document.getElementById('gaugeScore').textContent = '—';
-    document.getElementById('gradeBadge').textContent = '—';
-    document.getElementById('gradeBadge').style.color = 'var(--muted)';
-    return;
-  }
+    // ── Ledger & Score ────────────────────────────────────────────────────────────
+    function updateLedger() {
+      const income   = state.transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const expenses = state.transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      const balance  = income - expenses;
+      const savingsRate = income > 0 ? Math.max(0, (balance / income) * 100) : 0;
 
-  // ── Financial Score (0–100) ────────────────────────────────────────────────
-  // Component 1: Savings rate (0–50 pts)  — 20%+ rate = full marks
-  const savingsScore = Math.min(50, (savingsRate / 20) * 50);
+      document.getElementById('totalIncome').textContent   = formatCurrency(income);
+      document.getElementById('totalExpenses').textContent = formatCurrency(expenses);
+      document.getElementById('netBalance').textContent    = (balance >= 0 ? '' : '-') + formatCurrency(balance);
+      document.getElementById('txCount').textContent       = state.transactions.length;
+      document.getElementById('savingsRateLabel').textContent = income > 0 ? savingsRate.toFixed(1) + '%' : '—';
 
-  // Component 2: Expense ratio (0–30 pts) — spending <50% of income = full marks
-  const expRatio     = expenses / income;
-  const expScore     = Math.max(0, 30 - (expRatio * 30));
+      const cats = {};
+      state.transactions.filter(t => t.type === 'expense').forEach(t => {
+        cats[t.category] = (cats[t.category] || 0) + t.amount;
+      });
+      const top = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
+      document.getElementById('topCat').textContent = top ? top[0] : '—';
 
-  // Component 3: Has income logged (0–20 pts)
-  const hasIncome    = income > 0 ? 20 : 0;
+      updateScore(income, expenses, balance);
+    }
 
-  const score = Math.round(Math.min(100, savingsScore + expScore + hasIncome));
+    function updateScore(income, expenses, savings) {
+      document.getElementById('smIncome').textContent  = formatCurrency(income);
+      document.getElementById('smSpent').textContent   = formatCurrency(expenses);
+      document.getElementById('smSavings').textContent = (savings >= 0 ? '' : '-') + formatCurrency(savings);
 
-  // Grade
-  let grade, gradeColor;
-  if      (score >= 85) { grade = 'A+'; gradeColor = '#00e5a0'; }
-  else if (score >= 70) { grade = 'A';  gradeColor = '#00e5a0'; }
-  else if (score >= 55) { grade = 'B';  gradeColor = '#0099ff'; }
-  else if (score >= 40) { grade = 'C';  gradeColor = '#f0b429'; }
-  else if (score >= 25) { grade = 'D';  gradeColor = '#ff6b35'; }
-  else                  { grade = 'F';  gradeColor = '#ff4444'; }
+      const savingsRate = income > 0 ? Math.max(0, (savings / income) * 100) : 0;
+      document.getElementById('smRate').textContent = income > 0 ? savingsRate.toFixed(1) + '%' : '—';
 
-  // Update gauge
-  const arcLength = 100.53; // π × r (r=32) ≈ 100.53 for semicircle
-  const offset    = arcLength - (score / 100) * arcLength;
-  const gauge     = document.getElementById('gaugeFill');
-  gauge.style.strokeDashoffset = offset;
-  gauge.style.stroke = gradeColor;
+      const expPct  = income > 0 ? Math.min(100, (expenses / income) * 100) : 0;
+      const savePct = income > 0 ? Math.min(100, Math.max(0, (savings / income) * 100)) : 0;
+      const ratePct = Math.min(100, savingsRate * 2);
 
-  const scoreEl = document.getElementById('gaugeScore');
-  scoreEl.textContent = score;
-  scoreEl.style.color = gradeColor;
+      document.getElementById('smIncomeBar').style.width  = '100%';
+      document.getElementById('smSpentBar').style.width   = expPct + '%';
+      document.getElementById('smSavingsBar').style.width = savePct + '%';
+      document.getElementById('smRateBar').style.width    = ratePct + '%';
 
-  const gradeEl = document.getElementById('gradeBadge');
-  gradeEl.textContent = grade;
-  gradeEl.style.color = gradeColor;
-}
+      if (income === 0) {
+        document.getElementById('gaugeScore').textContent = '—';
+        document.getElementById('gradeBadge').textContent = '—';
+        document.getElementById('gradeBadge').style.color = 'var(--muted)';
+        return;
+      }
 
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-}
+      const savingsScore = Math.min(50, (savingsRate / 20) * 50);
+      const expScore     = Math.max(0, 30 - ((expenses / income) * 30));
+      const hasIncome    = 20;
+      const score        = Math.round(Math.min(100, savingsScore + expScore + hasIncome));
 
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-}
+      let grade, gradeColor;
+      if      (score >= 85) { grade = 'A+'; gradeColor = '#00d4aa'; }
+      else if (score >= 70) { grade = 'A';  gradeColor = '#00d4aa'; }
+      else if (score >= 55) { grade = 'B';  gradeColor = '#3b9eff'; }
+      else if (score >= 40) { grade = 'C';  gradeColor = '#f0b429'; }
+      else if (score >= 25) { grade = 'D';  gradeColor = '#ff7043'; }
+      else                  { grade = 'F';  gradeColor = '#ff4444'; }
 
-function scrollBottom() {
-  const area = document.getElementById('chatArea');
-  area.scrollTop = area.scrollHeight;
-}
+      const arcLength = 100.53;
+      const gauge = document.getElementById('gaugeFill');
+      gauge.style.strokeDashoffset = arcLength - (score / 100) * arcLength;
+      gauge.style.stroke = gradeColor;
 
-function addMessage(role, html) {
-  const area = document.getElementById('chatArea');
-  const row  = document.createElement('div');
-  row.className = `msg-row ${role}`;
+      const scoreEl = document.getElementById('gaugeScore');
+      scoreEl.textContent = score;
+      scoreEl.style.color = gradeColor;
 
-  const avatar = document.createElement('div');
-  avatar.className = `avatar ${role}`;
-  avatar.textContent = role === 'bot' ? '🤖' : '👤';
+      const gradeEl = document.getElementById('gradeBadge');
+      gradeEl.textContent = grade;
+      gradeEl.style.color = gradeColor;
+    }
 
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble';
-  bubble.innerHTML = html;
+    // ── UI Helpers ────────────────────────────────────────────────────────────────
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 110) + 'px';
+    }
 
-  row.appendChild(avatar);
-  row.appendChild(bubble);
-  area.appendChild(row);
-  scrollBottom();
-  return bubble;
-}
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    }
 
-function addTyping() {
-  const area = document.getElementById('chatArea');
-  const row  = document.createElement('div');
-  row.className = 'msg-row bot';
-  row.id = 'typingRow';
+    function scrollBottom() {
+      const area = document.getElementById('chatArea');
+      area.scrollTop = area.scrollHeight;
+    }
 
-  const avatar = document.createElement('div');
-  avatar.className = 'avatar bot';
-  avatar.textContent = '🤖';
+    // restoredTime === undefined  → new message (save it)
+    // restoredTime === string/null → restoration (don't save again)
+    function addMessage(role, html, showTime = true, restoredTime = undefined) {
+      const area = document.getElementById('chatArea');
+      const wrap = document.createElement('div');
 
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble';
-  bubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+      const row = document.createElement('div');
+      row.className = `msg-row ${role}`;
 
-  row.appendChild(avatar);
-  row.appendChild(bubble);
-  area.appendChild(row);
-  scrollBottom();
-}
+      const avatar = document.createElement('div');
+      avatar.className = `avatar ${role}`;
+      avatar.textContent = role === 'bot' ? '🤖' : '👤';
 
-function removeTyping() {
-  const el = document.getElementById('typingRow');
-  if (el) el.remove();
-}
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = html;
 
-function sendChip(chip) {
-  document.getElementById('userInput').value = chip.textContent;
-  sendMessage();
-}
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      wrap.appendChild(row);
 
-// ── Main send ─────────────────────────────────────────────────────────────────
-async function sendMessage() {
-  const input = document.getElementById('userInput');
-  const text  = input.value.trim();
-  if (!text) return;
+      const isNew = restoredTime === undefined;
+      const displayTime = isNew ? (showTime ? nowTime() : null) : restoredTime;
 
-  input.value = '';
-  input.style.height = 'auto';
-  document.getElementById('sendBtn').disabled = true;
+      if (displayTime) {
+        const time = document.createElement('div');
+        time.className = 'msg-time';
+        time.textContent = displayTime;
+        wrap.appendChild(time);
+      }
 
-  addMessage('user', escapeHtml(text));
+      area.appendChild(wrap);
+      scrollBottom();
 
-  // Build system prompt with current state
-  const systemPrompt = `You are FinBot, a smart personal finance tracker assistant. You help users log transactions, query their financial data, and provide insights.
+      // Persist new messages to localStorage
+      if (isNew) {
+        state.chatMessages.push({ role, html, time: showTime ? nowTime() : null });
+        saveState();
+      }
 
-CURRENT FINANCE DATA (JSON):
-${JSON.stringify({ transactions: state.transactions }, null, 2)}
+      return bubble;
+    }
 
-CAPABILITIES:
-1. LOG TRANSACTIONS: When user mentions adding income or expenses, extract the amount, category, and description, then respond with a JSON block AND a friendly message.
-2. QUERY DATA: Summarize income, expenses, balances, spending by category.
-3. INSIGHTS: Identify top spending categories, savings rate, suggestions.
+    function addTyping() {
+      const area = document.getElementById('chatArea');
+      const row = document.createElement('div');
+      row.className = 'msg-row bot';
+      row.id = 'typingRow';
 
-When logging a transaction, ALWAYS include a JSON block in this exact format:
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar bot';
+      avatar.textContent = '🤖';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      area.appendChild(row);
+      scrollBottom();
+    }
+
+    function removeTyping() {
+      const el = document.getElementById('typingRow');
+      if (el) el.remove();
+    }
+
+    function sendChip(chip) {
+      document.getElementById('userInput').value = chip.textContent;
+      sendMessage();
+    }
+
+    function fillInput(text) {
+      document.getElementById('userInput').value = text;
+      document.getElementById('userInput').focus();
+    }
+
+    // ── Transaction card HTML ─────────────────────────────────────────────────────
+    function renderTxCard(tx) {
+      const emoji = categoryEmoji(tx.category);
+      return `<div class="tx-card ${tx.type}">
+        <div class="tx-card-icon">${emoji}</div>
+        <div class="tx-card-info">
+          <div class="tx-desc">${tx.description || tx.category}</div>
+          <div class="tx-meta">${tx.category} · ${tx.date}</div>
+        </div>
+        <div class="tx-card-amount ${tx.type}">${tx.type === 'income' ? '+' : '-'}${formatCurrency(tx.amount)}</div>
+      </div>`;
+    }
+
+    // ── History Modal ─────────────────────────────────────────────────────────────
+    function openHistory() {
+      const body = document.getElementById('historyBody');
+      if (state.transactions.length === 0) {
+        body.innerHTML = '<div class="modal-empty">No transactions yet.</div>';
+      } else {
+        body.innerHTML = [...state.transactions].reverse().map((tx, i) => {
+          const realIdx = state.transactions.length - 1 - i;
+          return `<div class="tx-list-item">
+            <div class="tx-list-dot ${tx.type}"></div>
+            <div class="tx-list-info">
+              <div class="tl-desc">${tx.description || tx.category}</div>
+              <div class="tl-meta">${tx.category} · ${tx.date}</div>
+            </div>
+            <div class="tx-list-amount ${tx.type}">${tx.type === 'income' ? '+' : '-'}${formatCurrency(tx.amount)}</div>
+            <button class="tx-delete-btn" onclick="deleteTransaction(${realIdx})" title="Delete">✕</button>
+          </div>`;
+        }).join('');
+      }
+      document.getElementById('historyModal').classList.add('open');
+    }
+
+    function closeHistory() {
+      document.getElementById('historyModal').classList.remove('open');
+    }
+
+    function deleteTransaction(idx) {
+      const tx = state.transactions[idx];
+      state.transactions.splice(idx, 1);
+      saveState();
+      updateLedger();
+      showToast(`Deleted: ${tx.description || tx.category}`);
+      openHistory(); // re-render
+    }
+
+    // ── Clear All ────────────────────────────────────────────────────────────────
+    function confirmClear() {
+      if (state.transactions.length === 0 && state.conversationHistory.length === 0 && state.chatMessages.length === 0) {
+        showToast('Nothing to clear.');
+        return;
+      }
+      if (confirm('Clear all transactions and chat history?')) {
+        state.transactions = [];
+        state.conversationHistory = [];
+        state.chatMessages = [];
+        saveState();
+        updateLedger();
+        document.getElementById('chatArea').innerHTML = `<div class="welcome-card">
+          <div class="big-icon">🧾</div>
+          <h2>Finance Tracker Bot</h2>
+          <p>Track income, log expenses, and get insights. Just chat naturally!</p>
+        </div>`;
+        showToast('✓ All data cleared.');
+      }
+    }
+
+    // ── Main Send ─────────────────────────────────────────────────────────────────
+    async function sendMessage() {
+      const input = document.getElementById('userInput');
+      const text  = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      input.style.height = 'auto';
+      document.getElementById('sendBtn').disabled = true;
+
+      addMessage('user', escapeHtml(text));
+
+      // Build a clean summary of existing transactions (NO raw JSON that the AI might copy)
+      const existingIds = state.transactions.map(t => t.id);
+      const txSummary = state.transactions.length === 0
+        ? 'No transactions yet.'
+        : state.transactions.map(t =>
+            `[ID:${t.id}] ${t.type === 'income' ? '+' : '-'}₹${t.amount} | ${t.category} | ${t.description} | ${t.date}`
+          ).join('\n');
+
+      const today = new Date().toLocaleDateString('en-IN');
+      const systemPrompt = `You are FinBot, a finance tracker for Indian users. Today: ${today}.
+
+=== MANDATORY OUTPUT RULE ===
+Whenever the user tells you about a NEW income or expense, you MUST output a machine-readable block in EXACTLY this format — no exceptions:
 <transaction>
-{"type":"income"|"expense","amount":NUMBER,"category":"STRING","description":"STRING","date":"TODAY"}
+{"type":"income","amount":NUMBER,"category":"CATEGORY","description":"SHORT TEXT","date":"${today}"}
 </transaction>
+For expense use "type":"expense". Output this block BEFORE your friendly reply. Do NOT skip this block. Do NOT describe the transaction in words instead of JSON.
 
-Categories for income: Salary, Freelance, Investment, Gift, Other Income
-Categories for expense: Food, Groceries, Transport, Rent, Utilities, Shopping, Entertainment, Health, Education, Other
+Income categories: Salary, Freelance, Investment, Gift, Other Income
+Expense categories: Food, Groceries, Transport, Rent, Utilities, Shopping, Entertainment, Health, Education, Other
 
-Rules:
-- Indian Rupee (₹) is the default currency
-- Be conversational and brief
-- For balance queries, show a clean summary
-- For category breakdowns, use a compact text table
-- If the user's intent is unclear, ask for clarification
-- Never make up transactions that weren't explicitly stated
-- Today's date: ${new Date().toLocaleDateString('en-IN')}`;
+=== EXISTING TRANSACTIONS (DO NOT re-log) ===
+${txSummary}
 
-  state.conversationHistory.push({ role: 'user', content: text });
+=== RULES ===
+- Only output a <transaction> block for something the user JUST told you in this message.
+- If user asks to "show balance", "list transactions", or for advice — output ZERO <transaction> blocks.
+- Never duplicate a transaction already in the list above.
+- Be brief and helpful after the block.`;
 
-  addTyping();
+      state.conversationHistory.push({ role: 'user', content: text });
+      addTyping();
 
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...state.conversationHistory
-        ]
-      })
+      try {
+        const response = await fetch(BACKEND_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...state.conversationHistory
+            ]
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          const errMsg = data?.error?.message || `HTTP ${response.status}`;
+          removeTyping();
+          addMessage('bot', `⚠️ <strong>API Error:</strong> <code>${errMsg}</code>`);
+          document.getElementById('sendBtn').disabled = false;
+          return;
+        }
+
+        const raw = data.choices?.[0]?.message?.content || '';
+        const seenFingerprints = new Set();
+        const newTxs = [];
+
+        // Helper: try to parse and record a transaction from a JSON string
+        function tryAddTx(jsonStr) {
+          jsonStr = jsonStr.trim();
+          if (!jsonStr) return;
+          let tx = null;
+          // Attempt parse, then repair attempts
+          const attempts = [jsonStr, jsonStr + '}', jsonStr + '"}'];
+          for (const s of attempts) {
+            try { tx = JSON.parse(s); break; } catch(e) {}
+          }
+          // Manual field extraction if all JSON parses fail
+          if (!tx) {
+            const typeM = jsonStr.match(/"type"\s*:\s*"(income|expense)"/);
+            const amtM  = jsonStr.match(/"amount"\s*:\s*([0-9.]+)/);
+            if (typeM && amtM) {
+              tx = {
+                type:        typeM[1],
+                amount:      parseFloat(amtM[1]),
+                category:    (jsonStr.match(/"category"\s*:\s*"([^"]*)/) || [])[1] || 'Other',
+                description: (jsonStr.match(/"description"\s*:\s*"([^"]*)/) || [])[1] || '',
+                date:        (jsonStr.match(/"date"\s*:\s*"([^"]*)/) || [])[1] || new Date().toLocaleDateString('en-IN')
+              };
+            }
+          }
+          if (!tx || !tx.type || !tx.amount) return;
+          tx.amount = parseFloat(tx.amount);
+          if (isNaN(tx.amount) || tx.amount <= 0) return;
+          const fp = `${tx.type}-${tx.amount}-${tx.category}`;
+          if (seenFingerprints.has(fp)) return;
+          seenFingerprints.add(fp);
+          tx.id   = tx.id || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          tx.date = tx.date || new Date().toLocaleDateString('en-IN');
+          state.transactions.push(tx);
+          newTxs.push(tx);
+        }
+
+        // ── STAGE 1: Parse <transaction>...</transaction> tag blocks ───────────
+        const tagRegex = /<transaction>([\s\S]*?)<\/transaction>/gi;
+        let tagMatch;
+        while ((tagMatch = tagRegex.exec(raw)) !== null) {
+          tryAddTx(tagMatch[1]);
+        }
+
+        // ── STAGE 2: No tags found — scan for bare JSON {...} objects ─────────
+        if (newTxs.length === 0) {
+          // Strip any partial tags so we get clean text
+          const stripped = raw.replace(/<\/?transaction>/gi, '');
+          // Split on top-level { ... } by scanning character by character
+          let depth = 0, start = -1;
+          for (let i = 0; i < stripped.length; i++) {
+            if (stripped[i] === '{') {
+              if (depth === 0) start = i;
+              depth++;
+            } else if (stripped[i] === '}') {
+              depth--;
+              if (depth === 0 && start !== -1) {
+                const candidate = stripped.slice(start, i + 1);
+                // Only attempt if it has income/expense type field
+                if (/"type"\s*:\s*"(?:income|expense)"/i.test(candidate)) {
+                  tryAddTx(candidate);
+                }
+                start = -1;
+              }
+            }
+          }
+          // If depth > 0, the last JSON was truncated (no closing brace)
+          if (newTxs.length === 0 && depth > 0 && start !== -1) {
+            const truncated = stripped.slice(start);
+            if (/"type"\s*:\s*"(?:income|expense)"/i.test(truncated)) {
+              tryAddTx(truncated);
+            }
+          }
+        }
+
+        // ── STAGE 3: <transaction> tag exists but no closing tag (truncated) ──
+        if (newTxs.length === 0 && /<transaction>/i.test(raw) && !/<\/transaction>/i.test(raw)) {
+          const inside = raw.split(/<transaction>/i).pop() || '';
+          tryAddTx(inside);
+        }
+
+        if (newTxs.length > 0) {
+          saveState();
+          updateLedger();
+        }
+
+        // ── Build clean display text ───────────────────────────────────────────
+        let clean = raw
+          .replace(/<transaction>[\s\S]*?<\/transaction>/gi, '')
+          .replace(/<\/?transaction>/gi, '')
+          .replace(/```(?:json)?[\s\S]*?```/g, '')
+          .replace(/```/g, '')
+          .trim();
+
+        // Also remove any bare JSON objects that look like transaction data
+        clean = clean.replace(/\{[^{}]*"type"\s*:\s*"(?:income|expense)"[^{}]*\}/gi, '').trim();
+
+        let displayHtml = formatBotText(clean);
+
+        if (newTxs.length > 0) {
+          displayHtml += newTxs.map(tx => renderTxCard(tx)).join('');
+          showToast(`✓ ${newTxs.length} transaction${newTxs.length > 1 ? 's' : ''} logged`);
+        }
+
+        state.conversationHistory.push({ role: 'assistant', content: clean });
+
+        removeTyping();
+        addMessage('bot', displayHtml || '✅ Done!');
+
+      } catch (err) {
+        removeTyping();
+        addMessage('bot', '⚠️ <strong>Connection error.</strong> Make sure your Flask server is running on port 5000.');
+        console.error(err);
+      }
+
+      document.getElementById('sendBtn').disabled = false;
+      document.getElementById('userInput').focus();
+    }
+
+    // ── Text Formatters ───────────────────────────────────────────────────────────
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function formatBotText(text) {
+      if (!text) return '';
+      text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+      // Bullet points
+      text = text.replace(/^[-•*]\s+(.+)/gm, '<li>$1</li>');
+      text = text.replace(/(<li>[\s\S]*?<\/li>(\s*<li>[\s\S]*?<\/li>)*)/g,
+        '<ul style="margin:8px 0 8px 16px;line-height:1.9">$1</ul>');
+      // Numbered lists
+      text = text.replace(/^\d+\.\s+(.+)/gm, '<li>$1</li>');
+      text = text.replace(/\n{2,}/g, '<br><br>');
+      text = text.replace(/\n/g, '<br>');
+      return text;
+    }
+
+    // ── Close modal on overlay click ──────────────────────────────────────────────
+    document.getElementById('historyModal').addEventListener('click', function(e) {
+      if (e.target === this) closeHistory();
     });
 
-    const data = await response.json();
+    // ── Init ──────────────────────────────────────────────────────────────────────
+    updateLedger();
 
-    if (!response.ok) {
-      const errMsg = data?.error?.message || `HTTP ${response.status}`;
-      removeTyping();
-      addMessage('bot', `⚠️ API Error: <code>${errMsg}</code><br>Please check your API key and try again.`);
-      document.getElementById('sendBtn').disabled = false;
-      return;
+    if (state.chatMessages.length > 0) {
+      // Restore persisted conversation from localStorage
+      document.getElementById('chatArea').innerHTML = '';
+      state.chatMessages.forEach(msg => {
+        addMessage(msg.role, msg.html, false, msg.time || null);
+      });
+    } else {
+      // Fresh start — show welcome greeting
+      setTimeout(() => {
+        const hasData = state.transactions.length > 0;
+        addMessage('bot', `Hey there! 👋 I'm <strong>FinBot</strong>, your AI finance assistant — ready to go!${
+          hasData
+            ? `<br><br>Welcome back! You have <strong>${state.transactions.length}</strong> transactions saved. What can I help with?`
+            : `<br><br>Tell me about your income or expenses and I'll track them. Try:<br><br><code>Added ₹45,000 salary this month</code><br><code>Spent ₹1200 on lunch today</code><br><code>Show my balance</code>`
+        }`);
+      }, 300);
     }
-
-    const raw = data.choices?.[0]?.message?.content || '';
-
-    // Parse any transaction blocks
-    const txRegex = /<transaction>([\s\S]*?)<\/transaction>/g;
-    let match;
-    while ((match = txRegex.exec(raw)) !== null) {
-      try {
-        const tx = JSON.parse(match[1].trim());
-        tx.id   = Date.now() + Math.random();
-        tx.date = tx.date || new Date().toLocaleDateString('en-IN');
-        state.transactions.push(tx);
-        updateLedger();
-      } catch (e) { /* ignore parse errors */ }
-    }
-
-    // Clean response for display (remove raw <transaction> blocks)
-    const clean = raw.replace(/<transaction>[\s\S]*?<\/transaction>/g, '').trim();
-
-    state.conversationHistory.push({ role: 'assistant', content: raw });
-
-    removeTyping();
-    addMessage('bot', formatBotText(clean));
-
-  } catch (err) {
-    removeTyping();
-    addMessage('bot', '⚠️ Connection error. Please check your API key and try again.');
-    console.error(err);
-  }
-
-  document.getElementById('sendBtn').disabled = false;
-  document.getElementById('userInput').focus();
-}
-
-function escapeHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function formatBotText(text) {
-  // Bold **text**
-  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  // Inline code `code`
-  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-  // Bullet points
-  text = text.replace(/^[-•]\s+(.+)/gm, '<li>$1</li>');
-  text = text.replace(/(<li>.*<\/li>)/s, '<ul style="margin:8px 0 8px 16px;line-height:1.8">$1</ul>');
-  // Newlines
-  text = text.replace(/\n{2,}/g, '<br><br>');
-  text = text.replace(/\n/g, '<br>');
-  return text;
-}
-
-// Init
-updateLedger();
-setTimeout(() => {
-  addMessage('bot', 'Hey there! 👋 I\'m <strong>FinBot</strong>, your personal finance assistant — ready to go!<br><br>Tell me about your income or expenses and I\'ll track them for you. Try:<br><br><code>Added ₹45,000 salary this month</code><br><code>Spent ₹1200 on lunch today</code><br><code>Show my balance</code>');
-}, 300);
-</script>
+  </script>
 </body>
 </html>
