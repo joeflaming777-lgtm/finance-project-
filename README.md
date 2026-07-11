@@ -130,21 +130,7 @@ graph TD
 2. **Real-time Analytics**: The backend calculates total balance, savings rate, and financial health score, instantly returning the aggregated stats to update the frontend graphs.
 3. **AI Chat Loop**: When the user chats with the AI, the frontend sends the conversation history along with current ledger metrics to the backend. Flask proxies this securely with context to LLaMA 3.1 via OpenRouter.
 
----
-
-## 🤝 Contributing & Support
-
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-⭐ **Support the project by giving it a star!** It helps visibility and lets recruiters and developers know the project is active.
-
----
+___
 
 ## 📄 License
 
