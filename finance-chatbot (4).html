@@ -732,6 +732,50 @@
       padding: 30px;
     }
 
+    .profile-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 6px;
+    }
+
+    .profile-select {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 3px 6px;
+      outline: none;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+
+    .profile-select option {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .new-profile-btn {
+      background: transparent;
+      border: none;
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 3px 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 1px solid var(--border);
+    }
+
+    .new-profile-btn:hover {
+      color: var(--accent2);
+      text-shadow: 0 0 8px var(--accent2-dim);
+    }
+
     /* ── RESPONSIVE ──────────────────────────────────────── */
     @media (max-width: 520px) {
       .chips { gap: 5px; }
@@ -751,6 +795,11 @@
       <p>AI Finance Assistant</p>
     </div>
     <div class="header-actions">
+      <div class="profile-container">
+        <select id="profileSelect" onchange="switchProfile(this.value)" class="profile-select" title="Switch Finance Account">
+        </select>
+        <button class="new-profile-btn" onclick="createNewProfile()" title="Create New Finance Profile">➕ New Finance</button>
+      </div>
       <button class="clear-btn" onclick="openHistory()">📋 History</button>
       <button class="clear-btn" onclick="confirmClear()">🗑 Clear</button>
       <div class="status-dot">
@@ -872,20 +921,38 @@
       localStorage.setItem('data_wiped_v1', 'true');
     }
 
+    // ── Profile management ────────────────────────────────────────────────────────
+    let profiles = JSON.parse(localStorage.getItem('finbot_profiles') || '["Default"]');
+    let currentProfile = localStorage.getItem('finbot_current_profile') || 'Default';
+
+    // Migration: If there are old transactions, copy them to "Default" namespace
+    if (localStorage.getItem('finbot_txns') && !localStorage.getItem('finbot_migrated_to_profiles')) {
+      localStorage.setItem('finbot_txns_Default', localStorage.getItem('finbot_txns'));
+      localStorage.setItem('finbot_history_Default', localStorage.getItem('finbot_history') || '[]');
+      localStorage.setItem('finbot_chat_Default', localStorage.getItem('finbot_chat') || '[]');
+      localStorage.setItem('finbot_migrated_to_profiles', 'true');
+    }
+
+    function getStorageKey(key, profile = currentProfile) {
+      return `finbot_${key}_${profile}`;
+    }
+
     // ── State ────────────────────────────────────────────────────────────────────
     const state = {
-      transactions:        JSON.parse(localStorage.getItem('finbot_txns')     || '[]'),
-      conversationHistory: JSON.parse(localStorage.getItem('finbot_history') || '[]'),
-      chatMessages:        JSON.parse(localStorage.getItem('finbot_chat')    || '[]')
+      transactions:        JSON.parse(localStorage.getItem(getStorageKey('txns'))     || '[]'),
+      conversationHistory: JSON.parse(localStorage.getItem(getStorageKey('history')) || '[]'),
+      chatMessages:        JSON.parse(localStorage.getItem(getStorageKey('chat'))    || '[]')
     };
 
     const BACKEND_URL = 'http://127.0.0.1:5000/api/chat';
 
     // ── Persistence ───────────────────────────────────────────────────────────────
     function saveState() {
-      localStorage.setItem('finbot_txns',     JSON.stringify(state.transactions));
-      localStorage.setItem('finbot_history',  JSON.stringify(state.conversationHistory));
-      localStorage.setItem('finbot_chat',     JSON.stringify(state.chatMessages));
+      localStorage.setItem(getStorageKey('txns'),     JSON.stringify(state.transactions));
+      localStorage.setItem(getStorageKey('history'),  JSON.stringify(state.conversationHistory));
+      localStorage.setItem(getStorageKey('chat'),     JSON.stringify(state.chatMessages));
+      localStorage.setItem('finbot_profiles',         JSON.stringify(profiles));
+      localStorage.setItem('finbot_current_profile',  currentProfile);
     }
 
     // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -1367,8 +1434,79 @@ ${txSummary}
       if (e.target === this) closeHistory();
     });
 
+    // ── Profile Switching functions ───────────────────────────────────────────────
+    function updateProfileDropdown() {
+      const select = document.getElementById('profileSelect');
+      if (!select) return;
+      select.innerHTML = '';
+      profiles.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.textContent = p;
+        if (p === currentProfile) {
+          opt.selected = true;
+        }
+        select.appendChild(opt);
+      });
+    }
+
+    function createNewProfile() {
+      const name = prompt("Enter a name for the new finance profile / account:");
+      if (!name) return;
+      const cleanName = name.trim();
+      if (!cleanName) return;
+      if (profiles.includes(cleanName)) {
+        alert("A profile with this name already exists.");
+        return;
+      }
+      profiles.push(cleanName);
+      switchProfile(cleanName);
+    }
+
+    function switchProfile(profileName) {
+      if (!profiles.includes(profileName)) return;
+      currentProfile = profileName;
+      localStorage.setItem('finbot_current_profile', currentProfile);
+      
+      // Reload state
+      state.transactions        = JSON.parse(localStorage.getItem(getStorageKey('txns'))     || '[]');
+      state.conversationHistory = JSON.parse(localStorage.getItem(getStorageKey('history')) || '[]');
+      state.chatMessages        = JSON.parse(localStorage.getItem(getStorageKey('chat'))    || '[]');
+      
+      // Update UI
+      updateLedger();
+      updateProfileDropdown();
+      
+      // Re-render chat messages
+      const area = document.getElementById('chatArea');
+      area.innerHTML = '';
+      if (state.chatMessages.length > 0) {
+        state.chatMessages.forEach(msg => {
+          addMessage(msg.role, msg.html, false, msg.time || null);
+        });
+      } else {
+        const welcomeWrap = document.createElement('div');
+        welcomeWrap.className = 'welcome-card';
+        welcomeWrap.innerHTML = `
+          <div class="big-icon">🧾</div>
+          <h2>Finance Tracker Bot</h2>
+          <p>Track income, log expenses, and get insights on your spending. Just chat naturally — I'll handle the numbers.</p>
+        `;
+        area.appendChild(welcomeWrap);
+        
+        const hasData = state.transactions.length > 0;
+        addMessage('bot', `Hey there! 👋 I'm <strong>FinBot</strong>, your AI finance assistant — ready to go!${
+          hasData
+            ? `<br><br>Welcome back! You have <strong>${state.transactions.length}</strong> transactions saved. What can I help with?`
+            : `<br><br>Tell me about your income or expenses and I'll track them. Try:<br><br><code>Added ₹45,000 salary this month</code><br><code>Spent ₹1200 on lunch today</code><br><code>Show my balance</code>`
+        }`, false, null);
+      }
+      showToast(`Switched to finance: ${profileName}`);
+    }
+
     // ── Init ──────────────────────────────────────────────────────────────────────
     updateLedger();
+    updateProfileDropdown();
 
     if (state.chatMessages.length > 0) {
       // Restore persisted conversation from localStorage
