@@ -35,3 +35,12 @@ Thumbs.db
 
 # Logs
 *.log
+
+# SQLite databases
+*.db
+
+# Nested duplicate repo (remove this folder manually)
+finance-project-/
+
+# Python cache
+__pycache__/
