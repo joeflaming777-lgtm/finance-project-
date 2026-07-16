@@ -802,10 +802,14 @@
       </div>
       <button class="clear-btn" onclick="openHistory()">📋 History</button>
       <button class="clear-btn" onclick="confirmClear()">🗑 Clear</button>
-      <div class="status-dot">
+      <a class="clear-btn" href="/calendar" id="cal-link"
+        style="text-decoration:none;display:inline-block;">📅 Calendar</a>
+      <div class="status-dot" id="user-status-display" style="gap:6px;">
         <div class="dot"></div>
-        <span>Online</span>
+        <span id="nav-user-name" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">…</span>
       </div>
+      <button class="clear-btn" id="logout-header-btn" onclick="finbotLogout()"
+        style="color:#ff7043;border-color:#ff7043;background:rgba(255,112,67,0.08);">⏻ Sign Out</button>
     </div>
   </header>
 
@@ -1524,6 +1528,26 @@ ${txSummary}
             : `<br><br>Tell me about your income or expenses and I'll track them. Try:<br><br><code>Added ₹45,000 salary this month</code><br><code>Spent ₹1200 on lunch today</code><br><code>Show my balance</code>`
         }`);
       }, 300);
+    }
+  </script>
+
+  <!-- ── Auth guard + user display ──────────────────────────────────────── -->
+  <script>
+    (async function guardAuth() {
+      try {
+        const r = await fetch('/api/me');
+        if (!r.ok) { window.location.href = '/'; return; }
+        const u = await r.json();
+        const el = document.getElementById('nav-user-name');
+        if (el) el.textContent = u.username || u.email;
+      } catch {
+        window.location.href = '/';
+      }
+    })();
+
+    async function finbotLogout() {
+      try { await fetch('/api/logout', { method: 'POST' }); } catch {}
+      window.location.href = '/';
     }
   </script>
 </body>
