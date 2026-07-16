@@ -854,6 +854,81 @@ async function sendMessage() {
 
   addMessage('user', escapeHtml(text));
 
+  // ── Local command handler (no AI needed) ─────────────────────────────────
+  const lc = text.toLowerCase();
+
+  // "list all transactions" / "show transactions" / "last transaction"
+  if (/\b(list|show|all|last|recent|transactions?|history)\b/.test(lc) && /\b(transaction|history|list|show)\b/.test(lc)) {
+    document.getElementById('sendBtn').disabled = false;
+    if (state.transactions.length === 0) {
+      addMessage('bot', '📋 No transactions recorded yet. Tell me about your income or expenses to get started!');
+      return;
+    }
+    const rows = state.transactions.slice().reverse().map(t => {
+      const cls  = t.type === 'income' ? 'pos' : 'neg';
+      const sign = t.type === 'income' ? '+' : '−';
+      return `<tr>
+        <td>${t.date}</td>
+        <td style="text-transform:capitalize">${t.type}</td>
+        <td>${t.category || '—'}</td>
+        <td>${t.description || '—'}</td>
+        <td class="${cls}">${sign}₹${Number(t.amount).toLocaleString('en-IN')}</td>
+      </tr>`;
+    }).join('');
+    const html = `📋 <strong>All Transactions</strong> (${state.transactions.length} total)<br><br>
+    <table>
+      <tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Amount</th></tr>
+      ${rows}
+    </table>`;
+    addMessage('bot', html);
+    return;
+  }
+
+  // "show my balance" / "what is my balance"
+  if (/\b(balance|net|total)\b/.test(lc) && !/add|income|expense|spent|salary/.test(lc)) {
+    document.getElementById('sendBtn').disabled = false;
+    const income   = state.transactions.filter(t => t.type === 'income').reduce((s,t) => s + Number(t.amount), 0);
+    const expenses = state.transactions.filter(t => t.type === 'expense').reduce((s,t) => s + Number(t.amount), 0);
+    const balance  = income - expenses;
+    const balColor = balance >= 0 ? 'var(--accent)' : 'var(--warn)';
+    const html = `💰 <strong>Your Balance Summary</strong><br><br>
+      <table>
+        <tr><th>Category</th><th>Amount</th></tr>
+        <tr><td>Total Income</td><td class="pos">+₹${income.toLocaleString('en-IN')}</td></tr>
+        <tr><td>Total Expenses</td><td class="neg">−₹${expenses.toLocaleString('en-IN')}</td></tr>
+        <tr><td><strong>Net Balance</strong></td><td style="color:${balColor};font-weight:600">${balance >= 0 ? '+' : '−'}₹${Math.abs(balance).toLocaleString('en-IN')}</td></tr>
+      </table>`;
+    addMessage('bot', html);
+    return;
+  }
+
+  // "spending by category" / "category breakdown"
+  if (/\b(categor|breakdown|by categor|spending)\b/.test(lc)) {
+    document.getElementById('sendBtn').disabled = false;
+    const cats = {};
+    state.transactions.filter(t => t.type === 'expense').forEach(t => {
+      cats[t.category] = (cats[t.category] || 0) + Number(t.amount);
+    });
+    const entries = Object.entries(cats).sort((a,b) => b[1]-a[1]);
+    if (entries.length === 0) {
+      addMessage('bot', '📊 No expense data yet. Log some expenses and I\'ll break them down by category!');
+      return;
+    }
+    const total = entries.reduce((s,[,v]) => s + v, 0);
+    const rows = entries.map(([cat, amt]) => {
+      const pct = ((amt / total) * 100).toFixed(1);
+      return `<tr><td>${cat}</td><td class="neg">₹${amt.toLocaleString('en-IN')}</td><td>${pct}%</td></tr>`;
+    }).join('');
+    const html = `📊 <strong>Spending by Category</strong><br><br>
+      <table>
+        <tr><th>Category</th><th>Amount</th><th>Share</th></tr>
+        ${rows}
+      </table>`;
+    addMessage('bot', html);
+    return;
+  }
+  // ── End local commands ───────────────────────────────────────────────────
+
   // Build system prompt with current state
   const systemPrompt = `You are FinBot, a personal finance assistant.
 
@@ -861,20 +936,32 @@ CURRENT_DATA:
 ${JSON.stringify({ transactions: state.transactions })}
 
 INSTRUCTIONS:
-1. When user adds income or expense, you MUST append a data block at the END of your message using exactly this format (no markdown):
-<transaction>
-{"type":"income","amount":1234,"category":"Category","description":"Brief detail"}
-</transaction>
-Use "income" or "expense". You MUST extract the exact number the user provides! If they say 5000, amount is 5000.
+1. When user adds income OR expense, append ONLY a <transaction> block at the very END of your reply.
 
-2. Keep your text response very brief and friendly. If the user adds income or salary, reply with a festive message like "Salary is credited!" or "Income added successfully!".
-3. NEVER repeat or output the CURRENT_DATA back to the user!
+For INCOME (salary, received money, earnings, got paid, freelance, investment returns):
+<transaction>
+{"type":"income","amount":5000,"category":"Salary","description":"Monthly salary"}
+</transaction>
+
+For EXPENSES (spent, bought, paid, purchased, bill, cost, food, groceries, rent, transport, shopping):
+<transaction>
+{"type":"expense","amount":800,"category":"Food","description":"Lunch"}
+</transaction>
+
+RULES:
+- "type" MUST be exactly "income" or "expense" — choose based on context above.
+- Extract the EXACT number the user says (e.g. if they say 500, amount is 500).
+- The JSON must appear ONLY inside <transaction>...</transaction>. NEVER write JSON anywhere else. NEVER prefix it with a label.
+
+2. Your visible reply must be one short friendly line. Example: "Salary credited! 🎉" or "Expense logged! ✅".
+3. NEVER repeat or output CURRENT_DATA back to the user.
 4. Default to ₹ currency.
 5. Categories: Salary, Freelance, Investment, Gift, Food, Groceries, Transport, Rent, Utilities, Shopping, Entertainment, Health, Education, Other.
-6. Guardrail: If the user asks something unrelated to finance, go ahead and answer their question briefly, but ALWAYS end your reply with the disclaimer: "By the way, I am a finance bot! Feel free to ask me anything about your finances."
-7. Score queries: If the user asks for their "financial score" or "grade", DO NOT calculate it yourself! Simply tell them: "Your live Financial Score and Grade are automatically calculated and displayed in the Score Panel at the very top of your screen!"`;
+6. Guardrail: If the user asks something unrelated to finance, answer briefly but end with: "By the way, I am a finance bot! Feel free to ask me anything about your finances."
+7. Score queries: If the user asks for their "financial score" or "grade", say: "Your live Financial Score and Grade are automatically calculated and displayed in the Score Panel at the very top of your screen!"`;
 
   state.conversationHistory.push({ role: 'user', content: text });
+
 
   addTyping();
 
@@ -907,18 +994,26 @@ Use "income" or "expense". You MUST extract the exact number the user provides! 
     // Parse any transaction blocks
     const txRegex = /<transaction>([\s\S]*?)<\/transaction>/g;
     let match;
+    console.log('[FinBot] Raw AI response:', raw); // DEBUG
     while ((match = txRegex.exec(raw)) !== null) {
       try {
         const tx = JSON.parse(match[1].trim());
+        console.log('[FinBot] Parsed transaction:', tx); // DEBUG
         tx.id   = Date.now() + Math.random();
         tx.date = tx.date || new Date().toLocaleDateString('en-IN');
         state.transactions.push(tx);
         updateLedger();
-      } catch (e) { /* ignore parse errors */ }
+      } catch (e) {
+        console.error('[FinBot] JSON parse error:', e, '| Raw block:', match[1]); // DEBUG
+      }
     }
 
-    // Clean response for display (remove raw <transaction> blocks)
-    const clean = raw.replace(/<transaction>[\s\S]*?<\/transaction>/g, '').trim();
+    // Clean response for display — remove <transaction> blocks AND any stray JSON blobs / labels
+    let clean = raw.replace(/<transaction>[\s\S]*?<\/transaction>/g, '').trim();
+    // Strip any stray "TRANSACTION" label + JSON object that leaked outside the tags
+    clean = clean.replace(/\bTRANSACTION\b[\s\S]*?\{[\s\S]*?\}/g, '').trim();
+    // Strip any leftover bare JSON objects that look like transaction data
+    clean = clean.replace(/\{\s*"type"\s*:[\s\S]*?\}/g, '').trim();
 
     state.conversationHistory.push({ role: 'assistant', content: raw });
 
