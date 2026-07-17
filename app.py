@@ -24,13 +24,18 @@ Endpoints:
   POST /api/check-username        – Check if username is taken (real-time)
   POST /api/check-email           – Check if email is taken (real-time)
 
-  POST /api/delete-account        – Permanently delete account (requires email + password)
+  POST /api/send-delete-code      – Send 6-digit OTP to user's email for account deletion
+  POST /api/delete-account        – Permanently delete account (verifies OTP from email)
 """
 
 import os
+import random
+import smtplib
 import sqlite3
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from functools import wraps
 
 import requests
@@ -50,6 +55,14 @@ DB_PATH            = os.path.join(os.path.dirname(__file__), "finbot.db")
 AI_MODEL           = "meta-llama/llama-3.1-8b-instruct"
 AI_MAX_TOKENS      = 2000
 
+# ── Email / SMTP config ───────────────────────────────────────────────────────
+SMTP_HOST     = os.getenv("SMTP_HOST",     "smtp.gmail.com")
+SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER     = os.getenv("SMTP_USER",     "")   # your Gmail address
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")   # Gmail App Password
+SMTP_FROM     = os.getenv("SMTP_FROM",     SMTP_USER)
+EMAIL_ENABLED = bool(SMTP_USER and SMTP_PASSWORD)
+
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 @app.after_request
@@ -58,6 +71,126 @@ def add_cors(response):
     response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
     response.headers["Access-Control-Allow-Methods"] = "GET,POST,DELETE,OPTIONS"
     return response
+
+
+# ── Email helpers ────────────────────────────────────────────────────────────
+def send_email(to_addr: str, subject: str, html_body: str, text_body: str = "") -> bool:
+    """Send an email via SMTP. Returns True on success, False if email is disabled or fails."""
+    if not EMAIL_ENABLED:
+        app.logger.info("[Email] SMTP not configured – skipping send to %s", to_addr)
+        return False
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"]    = f"FinBot <{SMTP_FROM}>"
+        msg["To"]      = to_addr
+        if text_body:
+            msg.attach(MIMEText(text_body, "plain"))
+        msg.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_FROM, to_addr, msg.as_string())
+        app.logger.info("[Email] Sent '%s' to %s", subject, to_addr)
+        return True
+    except Exception as exc:
+        app.logger.error("[Email] Failed to send to %s: %s", to_addr, exc)
+        return False
+
+
+def send_welcome_email(username: str, email: str) -> None:
+    """Send a greeting email to a newly-logged-in user."""
+    subject = "👋 Welcome to FinBot – You're logged in!"
+    html = f"""
+    <div style="font-family:'Segoe UI',Arial,sans-serif;background:#080b0e;color:#dce8f0;padding:32px;">
+      <div style="max-width:520px;margin:0 auto;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <div style="display:inline-block;background:linear-gradient(135deg,#00d4aa,#3b9eff);
+                      border-radius:14px;padding:14px 22px;font-size:28px;">💹</div>
+          <h1 style="font-size:22px;font-weight:700;margin:12px 0 4px;
+                     background:linear-gradient(90deg,#00d4aa,#3b9eff);
+                     -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+            FinBot Finance Assistant
+          </h1>
+        </div>
+
+        <div style="background:#0e1318;border:1px solid #1f2e3d;border-radius:12px;padding:24px;">
+          <p style="font-size:16px;font-weight:600;color:#dce8f0;margin:0 0 10px;">Hey {username}! 👋</p>
+          <p style="color:#8fa3b8;font-size:14px;line-height:1.7;margin:0 0 16px;">
+            You've successfully logged into <strong style="color:#00d4aa;">FinBot</strong>.
+            Your smart finance assistant is ready to help you track income, log expenses,
+            and get insights on your spending.
+          </p>
+          <div style="background:#141c23;border-radius:8px;padding:14px 18px;margin-bottom:16px;">
+            <p style="margin:0 0 6px;font-size:11px;color:#4a6070;letter-spacing:.08em;text-transform:uppercase;">Logged in as</p>
+            <p style="margin:0;font-size:14px;color:#dce8f0;font-weight:500;">{username}</p>
+            <p style="margin:2px 0 0;font-size:12px;color:#8fa3b8;">{email}</p>
+          </div>
+          <p style="color:#8fa3b8;font-size:13px;line-height:1.6;margin:0;">
+            If this wasn't you, please <a href="/" style="color:#ff7043;">sign in and change your password</a> immediately.
+          </p>
+        </div>
+
+        <p style="text-align:center;color:#4a6070;font-size:11px;margin-top:20px;">
+          © FinBot · Your Personal Finance Assistant
+        </p>
+      </div>
+    </div>
+    """
+    text = f"Hey {username},\n\nYou've logged in to FinBot.\nIf this wasn't you, please secure your account immediately."
+    send_email(email, subject, html, text)
+
+
+def send_delete_otp_email(username: str, email: str, otp: str) -> bool:
+    """Send the 6-digit OTP for account deletion confirmation."""
+    subject = "🔐 FinBot Account Deletion Code"
+    html = f"""
+    <div style="font-family:'Segoe UI',Arial,sans-serif;background:#080b0e;color:#dce8f0;padding:32px;">
+      <div style="max-width:520px;margin:0 auto;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <div style="display:inline-block;background:linear-gradient(135deg,#ff7043,#ff4444);
+                      border-radius:14px;padding:14px 22px;font-size:28px;">⚠️</div>
+          <h1 style="font-size:20px;font-weight:700;margin:12px 0 4px;color:#ff7043;">
+            Account Deletion Request
+          </h1>
+        </div>
+
+        <div style="background:#0e1318;border:1px solid rgba(255,112,67,0.3);border-radius:12px;padding:24px;">
+          <p style="font-size:15px;color:#dce8f0;margin:0 0 12px;">Hi <strong>{username}</strong>,</p>
+          <p style="color:#8fa3b8;font-size:14px;line-height:1.7;margin:0 0 20px;">
+            We received a request to <strong style="color:#ff7043;">permanently delete</strong> your FinBot account.
+            Use the verification code below to confirm. This code expires in <strong style="color:#dce8f0;">10 minutes</strong>.
+          </p>
+
+          <div style="text-align:center;background:#141c23;border:2px solid rgba(255,112,67,0.4);
+                      border-radius:12px;padding:24px;margin-bottom:20px;">
+            <p style="margin:0 0 8px;font-size:11px;color:#4a6070;letter-spacing:.1em;text-transform:uppercase;">Verification Code</p>
+            <p style="margin:0;font-size:36px;font-weight:700;letter-spacing:10px;color:#ff7043;
+                      font-family:'Courier New',monospace;">{otp}</p>
+          </div>
+
+          <div style="background:rgba(255,112,67,0.07);border-radius:8px;padding:12px 16px;">
+            <p style="margin:0;font-size:12px;color:#ff7043;">
+              ⚠️ <strong>This action is irreversible.</strong> All your transactions, calendar events,
+              and account data will be permanently erased.
+            </p>
+          </div>
+
+          <p style="color:#4a6070;font-size:12px;margin:16px 0 0;">
+            If you did <strong>not</strong> request this, you can safely ignore this email. Your account remains safe.
+          </p>
+        </div>
+
+        <p style="text-align:center;color:#4a6070;font-size:11px;margin-top:20px;">
+          © FinBot · Your Personal Finance Assistant
+        </p>
+      </div>
+    </div>
+    """
+    text = f"Hi {username},\n\nYour FinBot account deletion code is: {otp}\nThis code expires in 10 minutes.\n\nIf you did not request this, ignore this email."
+    return send_email(email, subject, html, text)
 
 
 # ── Database helpers ──────────────────────────────────────────────────────────
@@ -251,6 +384,12 @@ def login():
     session["username"] = user["username"]
     session["email"]    = user["email"]
 
+    # Fire greeting email (non-blocking – errors are logged, never raised)
+    try:
+        send_welcome_email(user["username"], user["email"])
+    except Exception as exc:
+        app.logger.warning("[Email] Welcome email failed: %s", exc)
+
     return jsonify({"id": user["id"], "username": user["username"], "email": user["email"]})
 
 
@@ -270,43 +409,81 @@ def me():
     })
 
 
-@app.route("/api/delete-account", methods=["POST", "OPTIONS"])
+@app.route("/api/send-delete-code", methods=["POST", "OPTIONS"])
 @login_required
-def delete_account():
-    """Permanently delete the current user's account after verifying email + password."""
+def send_delete_code():
+    """Generate a 6-digit OTP, store it in session, and email it to the user."""
     if request.method == "OPTIONS":
         return "", 204
 
-    data     = request.get_json(silent=True) or {}
-    email    = (data.get("email") or "").strip().lower()
-    password = (data.get("password") or "")
+    user_id  = current_user_id()
+    username = session.get("username", "User")
+    email    = session.get("email", "")
 
-    if not email or not password:
-        return jsonify({"error": "Email and password are required"}), 400
+    if not email:
+        return jsonify({"error": "No email address found for your account"}), 400
 
-    db      = get_db()
-    user_id = current_user_id()
+    # Generate a 6-digit OTP
+    otp = "{:06d}".format(random.randint(0, 999999))
 
-    # Re-fetch the user record for verification
-    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    # Store OTP + expiry in session
+    session["delete_otp"]        = otp
+    session["delete_otp_expiry"] = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+    session["delete_otp_uid"]    = user_id   # bind to this user
 
-    # Verify supplied email matches
-    if user["email"] != email:
-        return jsonify({"error": "Email or password is incorrect"}), 403
+    if not EMAIL_ENABLED:
+        # Dev fallback: return the code in the response when SMTP is not configured
+        app.logger.warning("[Dev] SMTP not configured. Delete OTP for %s: %s", email, otp)
+        return jsonify({"message": "Code generated (SMTP not configured – check server logs)", "dev_code": otp}), 200
 
-    # Verify password
-    if not check_password_hash(user["password_hash"], password):
-        return jsonify({"error": "Email or password is incorrect"}), 403
+    ok = send_delete_otp_email(username, email, otp)
+    if not ok:
+        return jsonify({"error": "Failed to send email. Please try again."}), 500
 
-    # Delete all user data
-    db.execute("DELETE FROM transactions      WHERE user_id = ?", (user_id,))
-    db.execute("DELETE FROM calendar_events  WHERE user_id = ?", (user_id,))
-    db.execute("DELETE FROM users            WHERE id      = ?", (user_id,))
+    return jsonify({"message": f"Verification code sent to {email}"}), 200
+
+
+@app.route("/api/delete-account", methods=["POST", "OPTIONS"])
+@login_required
+def delete_account():
+    """Permanently delete the current user's account after verifying the emailed OTP."""
+    if request.method == "OPTIONS":
+        return "", 204
+
+    data = request.get_json(silent=True) or {}
+    otp  = (data.get("otp") or "").strip()
+
+    if not otp:
+        return jsonify({"error": "Verification code is required"}), 400
+
+    # Validate OTP from session
+    stored_otp    = session.get("delete_otp")
+    stored_expiry = session.get("delete_otp_expiry")
+    stored_uid    = session.get("delete_otp_uid")
+    user_id       = current_user_id()
+
+    if not stored_otp or not stored_expiry or stored_uid != user_id:
+        return jsonify({"error": "No verification code found. Please request a new one."}), 400
+
+    # Check expiry
+    if datetime.utcnow() > datetime.fromisoformat(stored_expiry):
+        session.pop("delete_otp", None)
+        session.pop("delete_otp_expiry", None)
+        session.pop("delete_otp_uid", None)
+        return jsonify({"error": "Code has expired. Please request a new one."}), 403
+
+    # Verify OTP
+    if otp != stored_otp:
+        return jsonify({"error": "Incorrect verification code. Please try again."}), 403
+
+    # OTP valid — delete all user data
+    db = get_db()
+    db.execute("DELETE FROM transactions     WHERE user_id = ?", (user_id,))
+    db.execute("DELETE FROM calendar_events WHERE user_id = ?", (user_id,))
+    db.execute("DELETE FROM users           WHERE id      = ?", (user_id,))
     db.commit()
 
-    # Clear session
+    # Clear session entirely
     session.clear()
 
     return jsonify({"message": "Account permanently deleted"}), 200

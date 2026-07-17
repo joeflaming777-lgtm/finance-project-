@@ -986,6 +986,84 @@
     }
     .pm-del-cancel-btn:hover { color: var(--text); }
 
+    /* ── OTP CODE INPUT ────────────────────────────────── */
+    .otp-input {
+      background: var(--surface2);
+      border: 2px solid rgba(255,112,67,0.3);
+      border-radius: 10px;
+      padding: 14px 12px;
+      font-family: var(--font-head);
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--warn);
+      outline: none;
+      width: 100%;
+      text-align: center;
+      letter-spacing: 10px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .otp-input::placeholder { color: rgba(255,112,67,0.25); letter-spacing: 6px; font-size: 18px; }
+    .otp-input:focus {
+      border-color: var(--warn);
+      box-shadow: 0 0 0 3px rgba(255,112,67,0.12);
+    }
+    .pm-send-code-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(255,112,67,0.1);
+      border: 1px solid rgba(255,112,67,0.35);
+      color: var(--warn);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+      width: 100%;
+    }
+    .pm-send-code-btn:hover {
+      background: rgba(255,112,67,0.2);
+      border-color: var(--warn);
+      box-shadow: 0 0 12px rgba(255,112,67,0.2);
+    }
+    .pm-send-code-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .otp-sent-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,212,170,0.07);
+      border: 1px solid rgba(0,212,170,0.2);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 10.5px;
+      color: var(--accent);
+    }
+    .otp-timer {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+    .otp-resend-link {
+      background: none;
+      border: none;
+      color: var(--accent2);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+      transition: color 0.2s;
+    }
+    .otp-resend-link:hover { color: var(--accent); }
+    .otp-resend-link:disabled { color: var(--muted); cursor: not-allowed; text-decoration: none; }
+
     /* ── RESPONSIVE ──────────────────────────────────────── */
     @media (max-width: 520px) {
       .chips { gap: 5px; }
@@ -1183,10 +1261,31 @@
         <!-- Delete Confirm panel (hidden by default) -->
         <div class="pm-delete-panel" id="pmDeletePanel">
           <div class="pm-delete-title">⚠️ Confirm Account Deletion</div>
-          <div class="pm-delete-note">This is <strong>irreversible</strong>. All your data, transactions and history will be permanently erased. Enter your credentials to confirm.</div>
-          <input type="email" class="pm-del-input" id="pmDelEmail" placeholder="Your email address">
-          <input type="password" class="pm-del-input" id="pmDelPassword" placeholder="Your password">
-          <button class="pm-del-confirm-btn" onclick="confirmDeleteAccount()">🗑️ Delete My Account Permanently</button>
+          <div class="pm-delete-note">This is <strong>irreversible</strong>. We'll send a 6-digit verification code to your email. Enter it below to permanently delete your account and all data.</div>
+
+          <!-- Step 1: Send Code button -->
+          <div id="pmDelStep1">
+            <button class="pm-send-code-btn" id="pmSendCodeBtn" onclick="requestDeleteCode()">
+              <span>📨</span> Send Verification Code to My Email
+            </button>
+          </div>
+
+          <!-- Step 2: OTP entry (hidden until code is sent) -->
+          <div id="pmDelStep2" style="display:none;flex-direction:column;gap:10px;">
+            <div class="otp-sent-info">
+              <span>✉️</span>
+              <span id="pmOtpSentMsg">Code sent!</span>
+              <span class="otp-timer" id="pmOtpTimer">10:00</span>
+            </div>
+            <input type="text" class="otp-input" id="pmDelOtp"
+              maxlength="6" inputmode="numeric" placeholder="000000"
+              oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+            <button class="pm-del-confirm-btn" onclick="confirmDeleteAccount()">🗑️ Delete My Account Permanently</button>
+            <div style="text-align:center;">
+              <button class="otp-resend-link" id="pmResendBtn" onclick="requestDeleteCode()" disabled>Resend code</button>
+            </div>
+          </div>
+
           <button class="pm-del-cancel-btn" onclick="closeDeletePanel()">Cancel</button>
         </div>
       </div>
@@ -1812,6 +1911,7 @@ ${txSummary}
   <script>
     let _currentUser = null;
     const _sessionStart = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    let _otpTimerInterval = null;
 
     (async function guardAuth() {
       try {
@@ -1820,11 +1920,10 @@ ${txSummary}
         const u = await r.json();
         _currentUser = u;
 
-        // Populate avatar button initials emoji
+        // Populate avatar button initials
         const name = u.username || u.email || '';
         const avatarEl = document.getElementById('profile-avatar-emoji');
         if (avatarEl && name) {
-          // Show first letter as text inside avatar
           avatarEl.textContent = name.charAt(0).toUpperCase();
           avatarEl.style.cssText = 'font-family:var(--font-head);font-weight:700;font-size:16px;color:#fff;text-shadow:none;';
         }
@@ -1839,18 +1938,16 @@ ${txSummary}
         const username = u.username || '—';
         const email    = u.email    || '—';
 
-        document.getElementById('pmUsername').textContent    = username;
-        document.getElementById('pmEmail').textContent       = email;
+        document.getElementById('pmUsername').textContent     = username;
+        document.getElementById('pmEmail').textContent        = email;
         document.getElementById('pmInfoUsername').textContent = username;
-        document.getElementById('pmInfoEmail').textContent   = email;
-        document.getElementById('pmInfoSession').textContent = _sessionStart;
-        document.getElementById('pmInfoTxCount').textContent = state.transactions.length;
+        document.getElementById('pmInfoEmail').textContent    = email;
+        document.getElementById('pmInfoSession').textContent  = _sessionStart;
+        document.getElementById('pmInfoTxCount').textContent  = state.transactions.length;
 
-        // Avatar initials
         const name = username !== '—' ? username : email;
         document.getElementById('pmAvatarBig').textContent = name.charAt(0).toUpperCase();
       }
-      // Reset delete panel
       closeDeletePanel();
       document.getElementById('profileModal').classList.add('open');
     }
@@ -1862,39 +1959,107 @@ ${txSummary}
     function openDeletePanel() {
       document.getElementById('pmDeletePanel').classList.add('open');
       document.getElementById('deleteAccountTriggerBtn').style.display = 'none';
-      document.getElementById('pmDelEmail').value = '';
-      document.getElementById('pmDelPassword').value = '';
-      setTimeout(() => document.getElementById('pmDelEmail').focus(), 100);
+      // Reset to step 1
+      document.getElementById('pmDelStep1').style.display = 'block';
+      document.getElementById('pmDelStep2').style.display = 'none';
+      if (document.getElementById('pmDelOtp')) document.getElementById('pmDelOtp').value = '';
+      clearOtpTimer();
     }
 
     function closeDeletePanel() {
       document.getElementById('pmDeletePanel').classList.remove('open');
       document.getElementById('deleteAccountTriggerBtn').style.display = 'flex';
+      clearOtpTimer();
     }
 
-    async function confirmDeleteAccount() {
-      const email    = document.getElementById('pmDelEmail').value.trim();
-      const password = document.getElementById('pmDelPassword').value;
+    // ── OTP Timer ────────────────────────────────────────────────────────────
+    function startOtpTimer(seconds = 600) {
+      clearOtpTimer();
+      const timerEl  = document.getElementById('pmOtpTimer');
+      const resendEl = document.getElementById('pmResendBtn');
+      if (resendEl) resendEl.disabled = true;
+      let remaining = seconds;
 
-      if (!email || !password) {
-        showToast('⚠️ Please enter both email and password.', 3000);
+      function tick() {
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        if (timerEl) timerEl.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+        if (remaining <= 0) {
+          clearOtpTimer();
+          if (timerEl)  timerEl.textContent  = 'Expired';
+          if (resendEl) resendEl.disabled = false;
+          showToast('⏱ Code expired — please request a new one.', 3500);
+        }
+        remaining--;
+      }
+      tick();
+      _otpTimerInterval = setInterval(tick, 1000);
+    }
+
+    function clearOtpTimer() {
+      if (_otpTimerInterval) { clearInterval(_otpTimerInterval); _otpTimerInterval = null; }
+    }
+
+    // ── Step 1: Request the OTP ──────────────────────────────────────────────
+    async function requestDeleteCode() {
+      const btn = document.getElementById('pmSendCodeBtn') || document.getElementById('pmResendBtn');
+      if (btn) btn.disabled = true;
+
+      try {
+        const r    = await fetch('/api/send-delete-code', { method: 'POST' });
+        const data = await r.json();
+
+        if (!r.ok) {
+          showToast('❌ ' + (data.error || 'Failed to send code.'), 3500);
+          if (btn) btn.disabled = false;
+          return;
+        }
+
+        // Dev mode: code returned in response (no SMTP configured)
+        if (data.dev_code) {
+          showToast(`🚧 Dev mode — code: ${data.dev_code}`, 8000);
+        }
+
+        // Transition to step 2
+        const email = (_currentUser && _currentUser.email) ? _currentUser.email : 'your email';
+        const masked = email.replace(/(.)(.*)(@.*)/, (_, a, b, c) => a + '*'.repeat(Math.min(b.length,6)) + c);
+        document.getElementById('pmOtpSentMsg').textContent = `Code sent to ${masked}`;
+        document.getElementById('pmDelStep1').style.display = 'none';
+        document.getElementById('pmDelStep2').style.display = 'flex';
+        document.getElementById('pmDelOtp').value = '';
+        setTimeout(() => document.getElementById('pmDelOtp').focus(), 100);
+        startOtpTimer(600);
+
+        if (!data.dev_code) showToast('✉️ Verification code sent to your email!', 3000);
+
+      } catch {
+        showToast('❌ Server error. Please try again.', 3000);
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    // ── Step 2: Submit the OTP ───────────────────────────────────────────────
+    async function confirmDeleteAccount() {
+      const otp = (document.getElementById('pmDelOtp')?.value || '').trim();
+      if (!otp || otp.length !== 6) {
+        showToast('⚠️ Please enter the 6-digit code from your email.', 3000);
         return;
       }
 
       try {
-        const r = await fetch('/api/delete-account', {
+        const r    = await fetch('/api/delete-account', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({ otp })
         });
         const data = await r.json();
         if (r.ok) {
-          // Clear all local data
+          clearOtpTimer();
           localStorage.clear();
           showToast('✓ Account deleted. Goodbye!', 3000);
           setTimeout(() => { window.location.href = '/'; }, 2000);
         } else {
-          showToast('❌ ' + (data.error || 'Invalid credentials. Try again.'), 3500);
+          showToast('❌ ' + (data.error || 'Verification failed.'), 3500);
         }
       } catch {
         showToast('❌ Server error. Please try again.', 3000);
@@ -1906,7 +2071,7 @@ ${txSummary}
       window.location.href = '/';
     }
 
-    // Close profile modal when clicking overlay
+    // Close profile modal on overlay click
     document.getElementById('profileModal').addEventListener('click', function(e) {
       if (e.target === this) closeProfileModal();
     });
