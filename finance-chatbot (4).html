@@ -732,49 +732,259 @@
       padding: 30px;
     }
 
-    .profile-container {
+    /* ── PROFILE AVATAR BUTTON ───────────────────────────── */
+    .profile-avatar-btn {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: 2px solid rgba(0,212,170,0.35);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      transition: all 0.25s;
+      box-shadow: 0 0 12px rgba(0,212,170,0.2);
+      position: relative;
+    }
+    .profile-avatar-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 0 20px rgba(0,212,170,0.4);
+      border-color: var(--accent);
+    }
+    .profile-avatar-btn .profile-online {
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 9px; height: 9px;
+      background: var(--accent);
+      border: 2px solid var(--surface);
+      border-radius: 50%;
+      box-shadow: 0 0 5px var(--accent);
+    }
+
+    /* ── PROFILE MODAL ───────────────────────────────────── */
+    .profile-modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(6px);
+      z-index: 600;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .profile-modal-overlay.open { display: flex; }
+
+    .profile-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,212,170,0.07);
+      animation: slideUp 0.28s cubic-bezier(.22,.68,0,1);
+      overflow: hidden;
+    }
+
+    .pm-header {
+      background: linear-gradient(135deg, rgba(0,212,170,0.08), rgba(59,158,255,0.06));
+      border-bottom: 1px solid var(--border);
+      padding: 24px 20px 20px;
+      text-align: center;
+      position: relative;
+    }
+    .pm-close-btn {
+      position: absolute;
+      top: 12px; right: 14px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.2s;
+      line-height: 1;
+    }
+    .pm-close-btn:hover { color: var(--text); background: var(--surface2); }
+
+    .pm-avatar-big {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: 3px solid rgba(0,212,170,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 12px;
+      box-shadow: 0 0 24px rgba(0,212,170,0.25);
+    }
+    .pm-username {
+      font-family: var(--font-head);
+      font-size: 18px;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 4px;
+    }
+    .pm-email {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.03em;
+    }
+    .pm-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 10px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(0,212,170,0.2);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 9.5px;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .pm-badge-dot {
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 5px var(--accent);
+      animation: pulse 2.5s infinite;
+    }
+
+    .pm-body {
+      padding: 16px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .pm-info-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+    .pm-info-icon { font-size: 16px; flex-shrink: 0; }
+    .pm-info-content { flex: 1; }
+    .pm-info-label { font-size: 9px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+    .pm-info-value { font-size: 12.5px; color: var(--text); margin-top: 1px; font-weight: 500; }
+
+    .pm-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 4px 0;
+    }
+
+    .pm-action-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text2);
+      transition: all 0.2s;
+      text-align: left;
+    }
+    .pm-action-btn:hover {
+      background: var(--surface3);
+      border-color: var(--border2);
+      color: var(--text);
+    }
+    .pm-action-btn.signout:hover {
+      background: rgba(59,158,255,0.08);
+      border-color: var(--accent2);
+      color: var(--accent2);
+    }
+    .pm-action-btn.danger:hover {
+      background: var(--warn-dim);
+      border-color: var(--warn);
+      color: var(--warn);
+    }
+    .pm-action-btn .btn-icon { font-size: 16px; }
+    .pm-action-btn .btn-label { flex: 1; font-weight: 500; }
+    .pm-action-btn .btn-arrow { color: var(--muted); font-size: 11px; }
+
+    /* ── DELETE CONFIRM PANEL ────────────────────────────── */
+    .pm-delete-panel {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(255,112,67,0.05);
+      border: 1px solid rgba(255,112,67,0.2);
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 2px;
+    }
+    .pm-delete-panel.open { display: flex; }
+    .pm-delete-title {
+      font-size: 11.5px;
+      color: var(--warn);
+      font-weight: 600;
       display: flex;
       align-items: center;
       gap: 6px;
+    }
+    .pm-delete-note {
+      font-size: 10.5px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .pm-del-input {
       background: var(--surface2);
       border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 2px 6px;
-    }
-
-    .profile-select {
-      background: transparent;
-      border: none;
-      color: var(--text);
+      border-radius: 8px;
+      padding: 9px 12px;
       font-family: var(--font-mono);
-      font-size: 10px;
-      padding: 3px 6px;
+      font-size: 12px;
+      color: var(--text);
       outline: none;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    .pm-del-input::placeholder { color: var(--muted); }
+    .pm-del-input:focus { border-color: var(--warn); }
+    .pm-del-confirm-btn {
+      background: var(--warn-dim);
+      border: 1px solid var(--warn);
+      color: var(--warn);
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
       cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
       letter-spacing: 0.04em;
     }
-
-    .profile-select option {
-      background: var(--surface2);
-      color: var(--text);
+    .pm-del-confirm-btn:hover {
+      background: var(--warn);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(255,112,67,0.35);
     }
-
-    .new-profile-btn {
-      background: transparent;
+    .pm-del-cancel-btn {
+      background: none;
       border: none;
-      color: var(--accent);
+      color: var(--muted);
       font-family: var(--font-mono);
-      font-size: 10px;
-      padding: 3px 6px;
+      font-size: 10.5px;
       cursor: pointer;
-      transition: all 0.2s;
-      border-left: 1px solid var(--border);
+      text-align: center;
+      padding: 4px;
+      transition: color 0.2s;
     }
-
-    .new-profile-btn:hover {
-      color: var(--accent2);
-      text-shadow: 0 0 8px var(--accent2-dim);
-    }
+    .pm-del-cancel-btn:hover { color: var(--text); }
 
     /* ── RESPONSIVE ──────────────────────────────────────── */
     @media (max-width: 520px) {
@@ -800,12 +1010,10 @@
       <button class="clear-btn" onclick="confirmClear()">🗑 Clear</button>
       <a class="clear-btn" href="/calendar" id="cal-link"
         style="text-decoration:none;display:inline-block;">📅 Calendar</a>
-      <div class="status-dot" id="user-status-display" style="gap:6px;">
-        <div class="dot"></div>
-        <span id="nav-user-name" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">…</span>
-      </div>
-      <button class="clear-btn" id="logout-header-btn" onclick="finbotLogout()"
-        style="color:#ff7043;border-color:#ff7043;background:rgba(255,112,67,0.08);">⏻ Sign Out</button>
+      <button class="profile-avatar-btn" id="profileAvatarBtn" onclick="openProfileModal()" title="Profile">
+        <span id="profile-avatar-emoji">👤</span>
+        <span class="profile-online"></span>
+      </button>
     </div>
   </header>
 
@@ -909,6 +1117,79 @@
         <button class="modal-close" onclick="closeHistory()">✕</button>
       </div>
       <div class="modal-body" id="historyBody"></div>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div class="profile-modal-overlay" id="profileModal">
+    <div class="profile-modal">
+      <!-- Header -->
+      <div class="pm-header">
+        <button class="pm-close-btn" onclick="closeProfileModal()">✕</button>
+        <div class="pm-avatar-big" id="pmAvatarBig">👤</div>
+        <div class="pm-username" id="pmUsername">Loading…</div>
+        <div class="pm-email" id="pmEmail">—</div>
+        <div class="pm-badge"><span class="pm-badge-dot"></span> Active Session</div>
+      </div>
+
+      <!-- Body -->
+      <div class="pm-body">
+        <!-- User info rows -->
+        <div class="pm-info-row">
+          <span class="pm-info-icon">🪪</span>
+          <div class="pm-info-content">
+            <div class="pm-info-label">Username</div>
+            <div class="pm-info-value" id="pmInfoUsername">—</div>
+          </div>
+        </div>
+        <div class="pm-info-row">
+          <span class="pm-info-icon">📧</span>
+          <div class="pm-info-content">
+            <div class="pm-info-label">Email Address</div>
+            <div class="pm-info-value" id="pmInfoEmail">—</div>
+          </div>
+        </div>
+        <div class="pm-info-row">
+          <span class="pm-info-icon">🕒</span>
+          <div class="pm-info-content">
+            <div class="pm-info-label">Session Started</div>
+            <div class="pm-info-value" id="pmInfoSession">—</div>
+          </div>
+        </div>
+        <div class="pm-info-row">
+          <span class="pm-info-icon">📊</span>
+          <div class="pm-info-content">
+            <div class="pm-info-label">Transactions Logged</div>
+            <div class="pm-info-value" id="pmInfoTxCount">0</div>
+          </div>
+        </div>
+
+        <div class="pm-divider"></div>
+
+        <!-- Sign Out -->
+        <button class="pm-action-btn signout" onclick="finbotLogout()">
+          <span class="btn-icon">🚪</span>
+          <span class="btn-label">Sign Out</span>
+          <span class="btn-arrow">→</span>
+        </button>
+
+        <!-- Delete Account trigger -->
+        <button class="pm-action-btn danger" id="deleteAccountTriggerBtn" onclick="openDeletePanel()">
+          <span class="btn-icon">🗑️</span>
+          <span class="btn-label">Delete Account</span>
+          <span class="btn-arrow">→</span>
+        </button>
+
+        <!-- Delete Confirm panel (hidden by default) -->
+        <div class="pm-delete-panel" id="pmDeletePanel">
+          <div class="pm-delete-title">⚠️ Confirm Account Deletion</div>
+          <div class="pm-delete-note">This is <strong>irreversible</strong>. All your data, transactions and history will be permanently erased. Enter your credentials to confirm.</div>
+          <input type="email" class="pm-del-input" id="pmDelEmail" placeholder="Your email address">
+          <input type="password" class="pm-del-input" id="pmDelPassword" placeholder="Your password">
+          <button class="pm-del-confirm-btn" onclick="confirmDeleteAccount()">🗑️ Delete My Account Permanently</button>
+          <button class="pm-del-cancel-btn" onclick="closeDeletePanel()">Cancel</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1527,24 +1808,108 @@ ${txSummary}
     }
   </script>
 
-  <!-- ── Auth guard + user display ──────────────────────────────────────── -->
+  <!-- ── Auth guard + user display + profile modal ─────────────────────── -->
   <script>
+    let _currentUser = null;
+    const _sessionStart = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
     (async function guardAuth() {
       try {
         const r = await fetch('/api/me');
         if (!r.ok) { window.location.href = '/'; return; }
         const u = await r.json();
-        const el = document.getElementById('nav-user-name');
-        if (el) el.textContent = u.username || u.email;
+        _currentUser = u;
+
+        // Populate avatar button initials emoji
+        const name = u.username || u.email || '';
+        const avatarEl = document.getElementById('profile-avatar-emoji');
+        if (avatarEl && name) {
+          // Show first letter as text inside avatar
+          avatarEl.textContent = name.charAt(0).toUpperCase();
+          avatarEl.style.cssText = 'font-family:var(--font-head);font-weight:700;font-size:16px;color:#fff;text-shadow:none;';
+        }
       } catch {
         window.location.href = '/';
       }
     })();
 
+    function openProfileModal() {
+      if (_currentUser) {
+        const u = _currentUser;
+        const username = u.username || '—';
+        const email    = u.email    || '—';
+
+        document.getElementById('pmUsername').textContent    = username;
+        document.getElementById('pmEmail').textContent       = email;
+        document.getElementById('pmInfoUsername').textContent = username;
+        document.getElementById('pmInfoEmail').textContent   = email;
+        document.getElementById('pmInfoSession').textContent = _sessionStart;
+        document.getElementById('pmInfoTxCount').textContent = state.transactions.length;
+
+        // Avatar initials
+        const name = username !== '—' ? username : email;
+        document.getElementById('pmAvatarBig').textContent = name.charAt(0).toUpperCase();
+      }
+      // Reset delete panel
+      closeDeletePanel();
+      document.getElementById('profileModal').classList.add('open');
+    }
+
+    function closeProfileModal() {
+      document.getElementById('profileModal').classList.remove('open');
+    }
+
+    function openDeletePanel() {
+      document.getElementById('pmDeletePanel').classList.add('open');
+      document.getElementById('deleteAccountTriggerBtn').style.display = 'none';
+      document.getElementById('pmDelEmail').value = '';
+      document.getElementById('pmDelPassword').value = '';
+      setTimeout(() => document.getElementById('pmDelEmail').focus(), 100);
+    }
+
+    function closeDeletePanel() {
+      document.getElementById('pmDeletePanel').classList.remove('open');
+      document.getElementById('deleteAccountTriggerBtn').style.display = 'flex';
+    }
+
+    async function confirmDeleteAccount() {
+      const email    = document.getElementById('pmDelEmail').value.trim();
+      const password = document.getElementById('pmDelPassword').value;
+
+      if (!email || !password) {
+        showToast('⚠️ Please enter both email and password.', 3000);
+        return;
+      }
+
+      try {
+        const r = await fetch('/api/delete-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await r.json();
+        if (r.ok) {
+          // Clear all local data
+          localStorage.clear();
+          showToast('✓ Account deleted. Goodbye!', 3000);
+          setTimeout(() => { window.location.href = '/'; }, 2000);
+        } else {
+          showToast('❌ ' + (data.error || 'Invalid credentials. Try again.'), 3500);
+        }
+      } catch {
+        showToast('❌ Server error. Please try again.', 3000);
+      }
+    }
+
     async function finbotLogout() {
       try { await fetch('/api/logout', { method: 'POST' }); } catch {}
       window.location.href = '/';
     }
+
+    // Close profile modal when clicking overlay
+    document.getElementById('profileModal').addEventListener('click', function(e) {
+      if (e.target === this) closeProfileModal();
+    });
   </script>
 </body>
 </html>

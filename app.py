@@ -23,6 +23,8 @@ Endpoints:
 
   POST /api/check-username        – Check if username is taken (real-time)
   POST /api/check-email           – Check if email is taken (real-time)
+
+  POST /api/delete-account        – Permanently delete account (requires email + password)
 """
 
 import os
@@ -266,6 +268,48 @@ def me():
         "username": session.get("username"),
         "email":    session.get("email"),
     })
+
+
+@app.route("/api/delete-account", methods=["POST", "OPTIONS"])
+@login_required
+def delete_account():
+    """Permanently delete the current user's account after verifying email + password."""
+    if request.method == "OPTIONS":
+        return "", 204
+
+    data     = request.get_json(silent=True) or {}
+    email    = (data.get("email") or "").strip().lower()
+    password = (data.get("password") or "")
+
+    if not email or not password:
+        return jsonify({"error": "Email and password are required"}), 400
+
+    db      = get_db()
+    user_id = current_user_id()
+
+    # Re-fetch the user record for verification
+    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Verify supplied email matches
+    if user["email"] != email:
+        return jsonify({"error": "Email or password is incorrect"}), 403
+
+    # Verify password
+    if not check_password_hash(user["password_hash"], password):
+        return jsonify({"error": "Email or password is incorrect"}), 403
+
+    # Delete all user data
+    db.execute("DELETE FROM transactions      WHERE user_id = ?", (user_id,))
+    db.execute("DELETE FROM calendar_events  WHERE user_id = ?", (user_id,))
+    db.execute("DELETE FROM users            WHERE id      = ?", (user_id,))
+    db.commit()
+
+    # Clear session
+    session.clear()
+
+    return jsonify({"message": "Account permanently deleted"}), 200
 
 
 # ── Real-time uniqueness checks ───────────────────────────────────────────────
