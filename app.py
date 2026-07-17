@@ -61,7 +61,10 @@ SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER     = os.getenv("SMTP_USER",     "")   # your Gmail address
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")   # Gmail App Password
 SMTP_FROM     = os.getenv("SMTP_FROM",     SMTP_USER)
-EMAIL_ENABLED = bool(SMTP_USER and SMTP_PASSWORD)
+
+# EMAIL_ENABLED is True only when real (non-placeholder) credentials are set
+_is_placeholder = lambda v: (not v) or v.lower().startswith("your_")
+EMAIL_ENABLED   = not (_is_placeholder(SMTP_USER) or _is_placeholder(SMTP_PASSWORD))
 
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
@@ -432,13 +435,21 @@ def send_delete_code():
     session["delete_otp_uid"]    = user_id   # bind to this user
 
     if not EMAIL_ENABLED:
-        # Dev fallback: return the code in the response when SMTP is not configured
+        # Dev fallback: return the code when SMTP is not configured
         app.logger.warning("[Dev] SMTP not configured. Delete OTP for %s: %s", email, otp)
-        return jsonify({"message": "Code generated (SMTP not configured – check server logs)", "dev_code": otp}), 200
+        return jsonify({
+            "message": "Code generated (SMTP not configured – see toast for your code)",
+            "dev_code": otp
+        }), 200
 
     ok = send_delete_otp_email(username, email, otp)
     if not ok:
-        return jsonify({"error": "Failed to send email. Please try again."}), 500
+        # Email configured but sending failed — still return code so user isn't stuck
+        app.logger.error("[Email] OTP send failed for %s – returning dev_code fallback", email)
+        return jsonify({
+            "message": "Email delivery failed. Use the code shown on screen.",
+            "dev_code": otp
+        }), 200
 
     return jsonify({"message": f"Verification code sent to {email}"}), 200
 

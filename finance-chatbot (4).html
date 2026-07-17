@@ -2015,22 +2015,43 @@ ${txSummary}
           return;
         }
 
-        // Dev mode: code returned in response (no SMTP configured)
-        if (data.dev_code) {
-          showToast(`🚧 Dev mode — code: ${data.dev_code}`, 8000);
-        }
-
-        // Transition to step 2
-        const email = (_currentUser && _currentUser.email) ? _currentUser.email : 'your email';
+        // Transition to step 2 first
+        const email  = (_currentUser && _currentUser.email) ? _currentUser.email : 'your email';
         const masked = email.replace(/(.)(.*)(@.*)/, (_, a, b, c) => a + '*'.repeat(Math.min(b.length,6)) + c);
-        document.getElementById('pmOtpSentMsg').textContent = `Code sent to ${masked}`;
         document.getElementById('pmDelStep1').style.display = 'none';
         document.getElementById('pmDelStep2').style.display = 'flex';
-        document.getElementById('pmDelOtp').value = '';
-        setTimeout(() => document.getElementById('pmDelOtp').focus(), 100);
         startOtpTimer(600);
 
-        if (!data.dev_code) showToast('✉️ Verification code sent to your email!', 3000);
+        if (data.dev_code) {
+          // Email not configured: show code prominently inside the modal
+          document.getElementById('pmOtpSentMsg').textContent = 'Email not configured — your code is shown below:';
+          const otpEl = document.getElementById('pmDelOtp');
+          if (otpEl) otpEl.value = data.dev_code;
+
+          let banner = document.getElementById('pmDevCodeBanner');
+          if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'pmDevCodeBanner';
+            banner.style.cssText = 'background:rgba(255,112,67,0.1);border:2px dashed var(--warn);border-radius:10px;padding:14px;text-align:center;margin-bottom:4px;';
+            document.getElementById('pmDelOtp').parentNode.insertBefore(banner, document.getElementById('pmDelOtp'));
+          }
+          banner.style.display = 'block';
+          banner.innerHTML = '<div style="font-size:9px;color:#ff7043;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Your Verification Code</div>'
+            + '<div style="font-size:34px;font-weight:800;letter-spacing:12px;color:#ff7043;font-family:var(--font-head);">' + data.dev_code + '</div>'
+            + '<div style="font-size:9px;color:var(--muted);margin-top:6px;">Auto-filled below ↓ click Delete to continue</div>';
+
+          showToast('Your deletion code: ' + data.dev_code, 20000);
+
+        } else {
+          // Real email sent successfully
+          document.getElementById('pmOtpSentMsg').textContent = 'Code sent to ' + masked;
+          document.getElementById('pmDelOtp').value = '';
+          const b = document.getElementById('pmDevCodeBanner');
+          if (b) b.style.display = 'none';
+          showToast('Verification code sent to your email!', 4000);
+        }
+
+        setTimeout(() => document.getElementById('pmDelOtp').focus(), 150);
 
       } catch {
         showToast('❌ Server error. Please try again.', 3000);
