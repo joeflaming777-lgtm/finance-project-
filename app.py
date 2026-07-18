@@ -56,11 +56,12 @@ AI_MODEL           = "meta-llama/llama-3.1-8b-instruct"
 AI_MAX_TOKENS      = 2000
 
 # ── Email / SMTP config ───────────────────────────────────────────────────────
-SMTP_HOST     = os.getenv("SMTP_HOST",     "smtp.gmail.com")
-SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER     = os.getenv("SMTP_USER",     "")   # your Gmail address
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")   # Gmail App Password
-SMTP_FROM     = os.getenv("SMTP_FROM",     SMTP_USER)
+SMTP_HOST      = os.getenv("SMTP_HOST",      "smtp.gmail.com")
+SMTP_PORT      = int(os.getenv("SMTP_PORT",  "587"))
+SMTP_USER      = os.getenv("SMTP_USER",      "finbot067@gmail.com")
+SMTP_PASSWORD  = os.getenv("SMTP_PASSWORD",  "")   # Gmail App Password
+SMTP_FROM      = os.getenv("SMTP_FROM",      SMTP_USER)
+SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "FinBot Support")
 
 # EMAIL_ENABLED is True only when real (non-placeholder) credentials are set
 _is_placeholder = lambda v: (not v) or v.lower().startswith("your_")
@@ -85,7 +86,7 @@ def send_email(to_addr: str, subject: str, html_body: str, text_body: str = "") 
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"]    = f"FinBot <{SMTP_FROM}>"
+        msg["From"]    = f"{SMTP_FROM_NAME} <{SMTP_FROM}>"
         msg["To"]      = to_addr
         if text_body:
             msg.attach(MIMEText(text_body, "plain"))
@@ -105,7 +106,7 @@ def send_email(to_addr: str, subject: str, html_body: str, text_body: str = "") 
 
 def send_welcome_email(username: str, email: str) -> None:
     """Send a greeting email to a newly-logged-in user."""
-    subject = "👋 Welcome to FinBot – You're logged in!"
+    subject = "👋 Welcome back to FinBot – You're logged in!"
     html = f"""
     <div style="font-family:'Segoe UI',Arial,sans-serif;background:#080b0e;color:#dce8f0;padding:32px;">
       <div style="max-width:520px;margin:0 auto;">
@@ -117,6 +118,7 @@ def send_welcome_email(username: str, email: str) -> None:
                      -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
             FinBot Finance Assistant
           </h1>
+          <p style="margin:0;font-size:12px;color:#4a6070;">Sent by FinBot Support · finbot067@gmail.com</p>
         </div>
 
         <div style="background:#0e1318;border:1px solid #1f2e3d;border-radius:12px;padding:24px;">
@@ -137,12 +139,83 @@ def send_welcome_email(username: str, email: str) -> None:
         </div>
 
         <p style="text-align:center;color:#4a6070;font-size:11px;margin-top:20px;">
-          © FinBot · Your Personal Finance Assistant
+          © FinBot Support · finbot067@gmail.com
         </p>
       </div>
     </div>
     """
-    text = f"Hey {username},\n\nYou've logged in to FinBot.\nIf this wasn't you, please secure your account immediately."
+    text = f"Hey {username},\n\nYou've logged in to FinBot.\nIf this wasn't you, please secure your account immediately.\n\n— FinBot Support\nfinbot067@gmail.com"
+    send_email(email, subject, html, text)
+
+
+def send_registration_email(username: str, email: str) -> None:
+    """Send a welcome-aboard email when a new user registers."""
+    subject = "🎉 Welcome to FinBot – Your account is ready!"
+    html = f"""
+    <div style="font-family:'Segoe UI',Arial,sans-serif;background:#080b0e;color:#dce8f0;padding:32px;">
+      <div style="max-width:520px;margin:0 auto;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <div style="display:inline-block;background:linear-gradient(135deg,#00d4aa,#3b9eff);
+                      border-radius:14px;padding:14px 22px;font-size:36px;">🎉</div>
+          <h1 style="font-size:22px;font-weight:700;margin:12px 0 4px;
+                     background:linear-gradient(90deg,#00d4aa,#3b9eff);
+                     -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+            Welcome to FinBot!
+          </h1>
+          <p style="margin:0;font-size:12px;color:#4a6070;">Sent by FinBot Support · finbot067@gmail.com</p>
+        </div>
+
+        <div style="background:#0e1318;border:1px solid #1f2e3d;border-radius:12px;padding:24px;">
+          <p style="font-size:16px;font-weight:600;color:#dce8f0;margin:0 0 10px;">Hi {username}! 🚀</p>
+          <p style="color:#8fa3b8;font-size:14px;line-height:1.7;margin:0 0 16px;">
+            Your <strong style="color:#00d4aa;">FinBot</strong> account has been successfully created.
+            You can now start tracking your income, expenses, and financial goals all in one place.
+          </p>
+
+          <div style="background:#141c23;border-radius:8px;padding:14px 18px;margin-bottom:16px;">
+            <p style="margin:0 0 6px;font-size:11px;color:#4a6070;letter-spacing:.08em;text-transform:uppercase;">Account Details</p>
+            <p style="margin:0;font-size:14px;color:#dce8f0;font-weight:500;">👤 {username}</p>
+            <p style="margin:4px 0 0;font-size:12px;color:#8fa3b8;">📧 {email}</p>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-bottom:16px;">
+            <div style="flex:1;background:linear-gradient(135deg,rgba(0,212,170,0.1),rgba(0,212,170,0.05));
+                        border:1px solid rgba(0,212,170,0.2);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">📊</div>
+              <p style="margin:0;font-size:11px;color:#00d4aa;font-weight:600;">Track Finances</p>
+            </div>
+            <div style="flex:1;background:linear-gradient(135deg,rgba(59,158,255,0.1),rgba(59,158,255,0.05));
+                        border:1px solid rgba(59,158,255,0.2);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">🤖</div>
+              <p style="margin:0;font-size:11px;color:#3b9eff;font-weight:600;">AI Assistant</p>
+            </div>
+            <div style="flex:1;background:linear-gradient(135deg,rgba(255,193,7,0.1),rgba(255,193,7,0.05));
+                        border:1px solid rgba(255,193,7,0.2);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">📅</div>
+              <p style="margin:0;font-size:11px;color:#ffc107;font-weight:600;">Calendar</p>
+            </div>
+          </div>
+
+          <p style="color:#8fa3b8;font-size:13px;line-height:1.6;margin:0;">
+            If you didn't create this account, please contact us immediately at
+            <a href="mailto:finbot067@gmail.com" style="color:#ff7043;">finbot067@gmail.com</a>.
+          </p>
+        </div>
+
+        <p style="text-align:center;color:#4a6070;font-size:11px;margin-top:20px;">
+          © FinBot Support · finbot067@gmail.com
+        </p>
+      </div>
+    </div>
+    """
+    text = (
+        f"Hi {username},\n\n"
+        f"Your FinBot account has been successfully created!\n"
+        f"Username: {username}\nEmail: {email}\n\n"
+        f"Start tracking your finances at http://127.0.0.1:5000\n\n"
+        f"If you didn't create this account, contact us at finbot067@gmail.com.\n\n"
+        f"— FinBot Support\nfinbot067@gmail.com"
+    )
     send_email(email, subject, html, text)
 
 
@@ -361,6 +434,12 @@ def register():
     session["user_id"]  = user_id
     session["username"] = username
     session["email"]    = email
+
+    # Send registration welcome email (non-blocking)
+    try:
+        send_registration_email(username, email)
+    except Exception as exc:
+        app.logger.warning("[Email] Registration email failed: %s", exc)
 
     return jsonify({"id": user_id, "username": username, "email": email}), 201
 
