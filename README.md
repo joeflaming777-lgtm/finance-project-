@@ -17,6 +17,14 @@
 - Session-based auth — each user's data is fully isolated
 - Auto-login after registration
 
+### 📧 Email Notifications (FinBot Support)
+- All transactional emails are sent from **FinBot Support** (`finbot067@gmail.com`) via Gmail SMTP
+- **Registration email** 🎉 — Welcome-aboard email sent automatically on new account creation
+- **Login notification** 👋 — Confirmation email sent on every successful login
+- **Account deletion OTP** 🔐 — 6-digit verification code emailed before permanent account deletion (expires in 10 minutes)
+- Emails are HTML-formatted with a premium dark design matching the app UI
+- Graceful fallback: if SMTP is not configured, the OTP is returned in the API response for dev/testing
+
 ### 💸 Transaction Tracking
 - Add **income** and **expense** transactions with category, description, and date
 - Delete transactions
@@ -84,17 +92,31 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Open `.env` and fill in your key:
+Open `.env` and fill in your keys:
 
 ```env
+# AI
 OPENROUTER_API_KEY=your_openrouter_api_key_here
 SECRET_KEY=your-random-secret-key-here
+
+# Email / SMTP (Gmail) — required for email notifications
+SMTP_USER=finbot067@gmail.com
+SMTP_PASSWORD=your_gmail_app_password   # 16-char Gmail App Password
+SMTP_FROM_NAME=FinBot Support           # Display name shown in emails
 ```
 
-> `SECRET_KEY` is used for Flask session signing. Generate one with:
+> **`SECRET_KEY`** — used for Flask session signing. Generate one with:
 > ```bash
 > python -c "import secrets; print(secrets.token_hex(32))"
 > ```
+
+> **`SMTP_PASSWORD`** — must be a **Gmail App Password**, not your regular Gmail password.
+> 1. Enable **2-Step Verification** on the sending Google account
+> 2. Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+> 3. Generate an App Password (select **Mail → Other**)
+> 4. Paste the 16-character code into `.env`
+>
+> If `SMTP_PASSWORD` is not set, the app still works — the deletion OTP is returned in the API response as `dev_code` for local testing.
 
 ### 5. Run the app
 
@@ -121,8 +143,8 @@ The server starts at **http://127.0.0.1:5000**
 ### Auth
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/register` | Register a new user |
-| `POST` | `/api/login` | Login |
+| `POST` | `/api/register` | Register a new user (sends welcome email) |
+| `POST` | `/api/login` | Login (sends login notification email) |
 | `POST` | `/api/logout` | Logout |
 | `GET`  | `/api/me` | Get current user info |
 | `POST` | `/api/check-username` | Check username availability |
@@ -146,6 +168,12 @@ The server starts at **http://127.0.0.1:5000**
 | `GET`  | `/api/calendar` | List calendar events (optional `?month=YYYY-MM`) |
 | `POST` | `/api/calendar` | Add a calendar event |
 | `DELETE` | `/api/calendar/<id>` | Delete a calendar event |
+
+### Email / Account Security
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/send-delete-code` | Email a 6-digit OTP to the user for account deletion |
+| `POST` | `/api/delete-account` | Permanently delete account after OTP verification |
 
 ### AI Chat
 | Method | Endpoint | Description |
@@ -202,6 +230,7 @@ CREATE TABLE calendar_events (
 | Database | SQLite (via `sqlite3`) |
 | Auth | Werkzeug password hashing · Flask sessions |
 | AI | LLaMA 3.1 8B Instruct via OpenRouter API |
+| Email | Gmail SMTP · `smtplib` · HTML MIME emails |
 | Frontend | Vanilla HTML · CSS · JavaScript |
 | Fonts | Inter · Space Grotesk · JetBrains Mono |
 | Config | python-dotenv |
@@ -215,6 +244,9 @@ CREATE TABLE calendar_events (
 - Each user can only read/modify their own data (user-scoped queries)
 - CORS headers are open (`*`) — suitable for local dev only; restrict in production
 - Change `SECRET_KEY` to a long random string before any public deployment
+- **Gmail App Password** is used instead of the account password — revoke it anytime from [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+- Account deletion OTPs expire after **10 minutes** and are bound to the requesting session
+- Keep your `.env` file out of version control — it is listed in `.gitignore`
 
 ---
 
