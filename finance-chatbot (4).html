@@ -1302,37 +1302,28 @@
     }
 
     // ── Profile management ────────────────────────────────────────────────────────
-    let profiles = JSON.parse(localStorage.getItem('finbot_profiles') || '["Default"]');
-    let currentProfile = localStorage.getItem('finbot_current_profile') || 'Default';
+    let profiles = ["Default"];
+    let currentProfile = 'Default';
 
-    // Migration: If there are old transactions, copy them to "Default" namespace
-    if (localStorage.getItem('finbot_txns') && !localStorage.getItem('finbot_migrated_to_profiles')) {
-      localStorage.setItem('finbot_txns_Default', localStorage.getItem('finbot_txns'));
-      localStorage.setItem('finbot_history_Default', localStorage.getItem('finbot_history') || '[]');
-      localStorage.setItem('finbot_chat_Default', localStorage.getItem('finbot_chat') || '[]');
-      localStorage.setItem('finbot_migrated_to_profiles', 'true');
-    }
-
-    function getStorageKey(key, profile = currentProfile) {
-      return `finbot_${key}_${profile}`;
+    function getStorageKey(key) {
+      const uid = (_currentUser && (_currentUser.id || _currentUser.username)) || 'anon';
+      return `finbot_${key}_${uid}`;
     }
 
     // ── State ────────────────────────────────────────────────────────────────────
     const state = {
-      transactions:        JSON.parse(localStorage.getItem(getStorageKey('txns'))     || '[]'),
-      conversationHistory: JSON.parse(localStorage.getItem(getStorageKey('history')) || '[]'),
-      chatMessages:        JSON.parse(localStorage.getItem(getStorageKey('chat'))    || '[]')
+      transactions:        [],
+      conversationHistory: [],
+      chatMessages:        []
     };
 
-    const BACKEND_URL = 'http://127.0.0.1:5000/api/chat';
+    const BACKEND_URL = '/api/chat';
 
     // ── Persistence ───────────────────────────────────────────────────────────────
     function saveState() {
-      localStorage.setItem(getStorageKey('txns'),     JSON.stringify(state.transactions));
+      if (!_currentUser) return;
       localStorage.setItem(getStorageKey('history'),  JSON.stringify(state.conversationHistory));
       localStorage.setItem(getStorageKey('chat'),     JSON.stringify(state.chatMessages));
-      localStorage.setItem('finbot_profiles',         JSON.stringify(profiles));
-      localStorage.setItem('finbot_current_profile',  currentProfile);
     }
 
     // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -1569,8 +1560,16 @@
       document.getElementById('historyModal').classList.remove('open');
     }
 
-    function deleteTransaction(idx) {
+    async function deleteTransaction(idx) {
       const tx = state.transactions[idx];
+      if (!tx) return;
+      if (tx.id) {
+        try {
+          await fetch(`/api/transactions/${tx.id}`, { method: 'DELETE' });
+        } catch (e) {
+          console.error("Failed to delete transaction from DB:", e);
+        }
+      }
       state.transactions.splice(idx, 1);
       saveState();
       updateLedger();
@@ -1579,12 +1578,17 @@
     }
 
     // ── Clear All ────────────────────────────────────────────────────────────────
-    function confirmClear() {
+    async function confirmClear() {
       if (state.transactions.length === 0 && state.conversationHistory.length === 0 && state.chatMessages.length === 0) {
         showToast('Nothing to clear.');
         return;
       }
       if (confirm('Clear all transactions and chat history?')) {
+        for (const tx of state.transactions) {
+          if (tx.id) {
+            try { await fetch(`/api/transactions/${tx.id}`, { method: 'DELETE' }); } catch (e) {}
+          }
+        }
         state.transactions = [];
         state.conversationHistory = [];
         state.chatMessages = [];
@@ -1751,6 +1755,21 @@ ${txSummary}
         }
 
         if (newTxs.length > 0) {
+          for (const tx of newTxs) {
+            try {
+              const res = await fetch('/api/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(tx)
+              });
+              if (res.ok) {
+                const saved = await res.json();
+                tx.id = saved.id;
+              }
+            } catch (e) {
+              console.error("Failed to save transaction to DB:", e);
+            }
+          }
           saveState();
           updateLedger();
         }
@@ -1887,24 +1906,6 @@ ${txSummary}
     // ── Init ──────────────────────────────────────────────────────────────────────
     updateLedger();
     updateProfileDropdown();
-
-    if (state.chatMessages.length > 0) {
-      // Restore persisted conversation from localStorage
-      document.getElementById('chatArea').innerHTML = '';
-      state.chatMessages.forEach(msg => {
-        addMessage(msg.role, msg.html, false, msg.time || null);
-      });
-    } else {
-      // Fresh start — show welcome greeting
-      setTimeout(() => {
-        const hasData = state.transactions.length > 0;
-        addMessage('bot', `Hey there! 👋 I'm <strong>FinBot</strong>, your AI finance assistant — ready to go!${
-          hasData
-            ? `<br><br>Welcome back! You have <strong>${state.transactions.length}</strong> transactions saved. What can I help with?`
-            : `<br><br>Tell me about your income or expenses and I'll track them. Try:<br><br><code>Added ₹45,000 salary this month</code><br><code>Spent ₹1200 on lunch today</code><br><code>Show my balance</code>`
-        }`);
-      }, 300);
-    }
   </script>
 
   <!-- ── Auth guard + user display + profile modal ─────────────────────── -->
@@ -1919,6 +1920,48 @@ ${txSummary}
         if (!r.ok) { window.location.href = '/'; return; }
         const u = await r.json();
         _currentUser = u;
+        currentProfile = u.id || u.username;
+
+        // Restore chat history & chat messages from user-scoped localStorage
+        state.conversationHistory = JSON.parse(localStorage.getItem(getStorageKey('history')) || '[]');
+        state.chatMessages        = JSON.parse(localStorage.getItem(getStorageKey('chat'))    || '[]');
+
+        // Sync user transactions directly from SQLite database
+        try {
+          const txRes = await fetch('/api/transactions');
+          if (txRes.ok) {
+            state.transactions = await txRes.json();
+          }
+        } catch (txErr) {
+          console.error("Failed to load transactions from DB:", txErr);
+        }
+
+        updateLedger();
+
+        // Render user-specific chat area
+        const area = document.getElementById('chatArea');
+        area.innerHTML = '';
+        if (state.chatMessages.length > 0) {
+          state.chatMessages.forEach(msg => {
+            addMessage(msg.role, msg.html, false, msg.time || null);
+          });
+        } else {
+          const welcomeWrap = document.createElement('div');
+          welcomeWrap.className = 'welcome-card';
+          welcomeWrap.innerHTML = `
+            <div class="big-icon">🧾</div>
+            <h2>Finance Tracker Bot</h2>
+            <p>Track income, log expenses, and get insights on your spending. Just chat naturally — I'll handle the numbers.</p>
+          `;
+          area.appendChild(welcomeWrap);
+
+          const hasData = state.transactions.length > 0;
+          addMessage('bot', `Hey there ${u.username ? '<strong>' + escapeHtml(u.username) + '</strong>' : ''}! 👋 I'm <strong>FinBot</strong>, your AI finance assistant — ready to go!${
+            hasData
+              ? `<br><br>Welcome back! You have <strong>${state.transactions.length}</strong> transactions saved in your account database. What can I help with?`
+              : `<br><br>Tell me about your income or expenses and I'll track them. Try:<br><br><code>Added ₹45,000 salary this month</code><br><code>Spent ₹1200 on lunch today</code><br><code>Show my balance</code>`
+          }`, false, null);
+        }
 
         // Populate avatar button initials
         const name = u.username || u.email || '';
@@ -2088,6 +2131,10 @@ ${txSummary}
     }
 
     async function finbotLogout() {
+      state.transactions = [];
+      state.conversationHistory = [];
+      state.chatMessages = [];
+      _currentUser = null;
       try { await fetch('/api/logout', { method: 'POST' }); } catch {}
       window.location.href = '/';
     }

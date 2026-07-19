@@ -641,7 +641,7 @@ def transactions():
     if errors:
         return jsonify({"error": "Validation failed", "details": errors}), 422
 
-    tx_id = str(uuid.uuid4())
+    tx_id = (data.get("id") or "").strip() or str(uuid.uuid4())
     db.execute(
         "INSERT INTO transactions (id, user_id, type, amount, category, description, date) VALUES (?,?,?,?,?,?,?)",
         (tx_id, user_id, tx_type, amount, category, description, date),
