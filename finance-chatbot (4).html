@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FinBot – Your Finance Assistant</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <script>
+    (function() {
+      if (localStorage.getItem('finbot_theme') === 'light') {
+        document.documentElement.classList.add('light-mode');
+      }
+    })();
+  </script>
   <style>
     :root {
       --bg: #080b0e;
@@ -29,6 +36,140 @@
       --font-mono: 'JetBrains Mono', monospace;
       --radius: 10px;
       --shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+
+    /* ── Light Mode (Day Mood) Overrides ─────────────────── */
+    html.light-mode, body.light-mode {
+      --bg: #f4f7fa;
+      --surface: #ffffff;
+      --surface2: #edf2f7;
+      --surface3: #e2e8f0;
+      --border: #cbd5e1;
+      --border2: #94a3b8;
+      --accent: #059669;
+      --accent-dim: rgba(5, 150, 105, 0.12);
+      --accent2: #2563eb;
+      --accent2-dim: rgba(37, 99, 235, 0.12);
+      --warn: #dc2626;
+      --warn-dim: rgba(220, 38, 38, 0.12);
+      --success: #059669;
+      --text: #0f172a;
+      --text2: #334155;
+      --muted: #64748b;
+      --user-bubble: #e0f2fe;
+      --bot-bubble: #ecfdf5;
+      --shadow: 0 4px 24px rgba(0,0,0,0.08);
+      background-color: var(--bg);
+      color: var(--text);
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(5, 150, 105, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 100% 80%, rgba(37, 99, 235, 0.06) 0%, transparent 60%);
+    }
+
+    html.light-mode .avatar.bot {
+      background: linear-gradient(135deg, #e6f4ea, #ceead6);
+      border: 1px solid rgba(5, 150, 105, 0.3);
+      color: #059669;
+    }
+
+    html.light-mode .avatar.user {
+      background: #e0f2fe;
+      border: 1px solid rgba(37, 99, 235, 0.3);
+    }
+
+    html.light-mode .bubble {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    html.light-mode .msg.welcome {
+      background: linear-gradient(135deg, #ecfdf5, #e0f2fe) !important;
+      border: 1px solid #a7f3d0 !important;
+      color: #064e3b !important;
+    }
+
+    html.light-mode .chat-input-area {
+      background: #ffffff;
+      border-top: 1px solid #cbd5e1;
+    }
+
+    html.light-mode .input-box {
+      background: #f8fafc;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+    }
+
+    html.light-mode .input-box:focus {
+      background: #ffffff;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    html.light-mode .chip {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+    }
+
+    html.light-mode .chip:hover {
+      background: #e2e8f0;
+      border-color: #2563eb;
+      color: #0f172a;
+    }
+
+    html.light-mode .modal-overlay,
+    html.light-mode .profile-modal-overlay {
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    html.light-mode .tx-item {
+      background: #ffffff;
+      border-color: #e2e8f0;
+    }
+
+    html.light-mode .tx-item:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    /* ── Theme Toggle Button ── */
+    .theme-toggle-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      padding: 5px 11px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.25s ease;
+      user-select: none;
+    }
+
+    .theme-toggle-btn:hover {
+      background: var(--surface3);
+      border-color: var(--accent);
+      color: var(--text);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,212,170,0.15);
+    }
+
+    html.light-mode .theme-toggle-btn {
+      background: #ffffff;
+      border-color: #cbd5e1;
+      color: #334155;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    html.light-mode .theme-toggle-btn:hover {
+      background: #f1f5f9;
+      border-color: #2563eb;
+      color: #0f172a;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1083,7 +1224,10 @@
       <p>AI Finance Assistant</p>
     </div>
     <div class="header-actions">
-
+      <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Theme">
+        <span id="themeToggleIcon">☀️</span>
+        <span id="themeToggleText">Day Mode</span>
+      </button>
 
       <button class="clear-btn" onclick="confirmClear()">🗑 Clear</button>
       <a class="clear-btn" href="/calendar" id="cal-link"
@@ -2138,6 +2282,36 @@ ${txSummary}
       try { await fetch('/api/logout', { method: 'POST' }); } catch {}
       window.location.href = '/';
     }
+
+    // ── Theme Manager ─────────────────────────────────────────────────────────────
+    function updateThemeUI() {
+      const isLight = document.documentElement.classList.contains('light-mode');
+      const btnIcon = document.getElementById('themeToggleIcon');
+      const btnText = document.getElementById('themeToggleText');
+      const btn = document.getElementById('themeToggleBtn');
+
+      if (btnIcon && btnText) {
+        if (isLight) {
+          btnIcon.textContent = '🌙';
+          btnText.textContent = 'Dark Mode';
+          if (btn) btn.title = 'Switch to Dark Mode';
+        } else {
+          btnIcon.textContent = '☀️';
+          btnText.textContent = 'Day Mode';
+          if (btn) btn.title = 'Switch to Day Mode';
+        }
+      }
+    }
+
+    function toggleTheme() {
+      const isLight = document.documentElement.classList.toggle('light-mode');
+      localStorage.setItem('finbot_theme', isLight ? 'light' : 'dark');
+      updateThemeUI();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      updateThemeUI();
+    });
 
     // Close profile modal on overlay click
     document.getElementById('profileModal').addEventListener('click', function(e) {

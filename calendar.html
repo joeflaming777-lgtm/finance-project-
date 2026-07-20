@@ -8,6 +8,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    (function() {
+      if (localStorage.getItem('finbot_theme') === 'light') {
+        document.documentElement.classList.add('light-mode');
+      }
+    })();
+  </script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,6 +38,93 @@
       --text-3:      #4a5a7a;
       --radius:      12px;
       --t:           0.22s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* ── Light Mode (Day Mood) Overrides ── */
+    html.light-mode, body.light-mode {
+      --bg:          #f4f7fb;
+      --surface:     #ffffff;
+      --surface-2:   #f0f4f9;
+      --surface-3:   rgba(0,0,0,0.04);
+      --border:      #d1d5db;
+      --accent:      #2563eb;
+      --accent-2:    #7c3aed;
+      --income:      #059669;
+      --income-bg:   rgba(5,150,105,0.12);
+      --expense:     #dc2626;
+      --expense-bg:  rgba(220,38,38,0.12);
+      --note:        #d97706;
+      --note-bg:     rgba(217,119,6,0.12);
+      --text-1:      #0f172a;
+      --text-2:      #334155;
+      --text-3:      #64748b;
+      background-color: var(--bg);
+      color: var(--text-1);
+    }
+
+    html.light-mode body::before {
+      background:
+        radial-gradient(ellipse 70% 50% at 10% 0%, rgba(37,99,235,.08) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 90% 100%, rgba(124,58,237,.06) 0%, transparent 60%);
+    }
+
+    html.light-mode nav {
+      background: rgba(255, 255, 255, 0.88);
+      border-bottom-color: #cbd5e1;
+    }
+
+    html.light-mode .nav-brand {
+      background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    html.light-mode .summary-card,
+    html.light-mode .cal-grid-wrap {
+      background: rgba(255, 255, 255, 0.9);
+      border-color: #e2e8f0;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+
+    html.light-mode .day-cell {
+      background: rgba(248, 250, 252, 0.8);
+      border-color: #e2e8f0;
+      color: #0f172a;
+    }
+
+    html.light-mode .day-cell.other-month {
+      background: #f1f5f9;
+      opacity: 0.6;
+    }
+
+    html.light-mode .day-cell.today {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+
+    html.light-mode .modal-card {
+      background: #ffffff;
+      border-color: #e2e8f0;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+    }
+
+    html.light-mode input,
+    html.light-mode select,
+    html.light-mode textarea {
+      background: #f8fafc;
+      color: #0f172a;
+      border-color: #cbd5e1;
+    }
+
+    html.light-mode .btn-ghost {
+      background: #f1f5f9;
+      color: #334155;
+      border-color: #cbd5e1;
+    }
+
+    html.light-mode .btn-ghost:hover {
+      background: #e2e8f0;
+      color: #0f172a;
     }
 
     html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-1); }
@@ -368,6 +462,9 @@
     </a>
     <div class="nav-links">
       <div class="nav-user"><div class="user-dot"></div><span id="nav-username">…</span></div>
+      <button class="btn-nav btn-ghost" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Theme">
+        <span id="themeToggleIcon">☀️</span> <span id="themeToggleText">Day Mode</span>
+      </button>
       <a class="btn-nav btn-ghost" href="/app">Dashboard</a>
       <button class="btn-nav btn-ghost" id="logout-btn" onclick="logout()">Sign Out</button>
     </div>
@@ -737,6 +834,36 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { el.className = ''; }, 3000);
   }
+
+  /* ── Theme Manager ────────────────────────────────────────────────────── */
+  function updateThemeUI() {
+    const isLight = document.documentElement.classList.contains('light-mode');
+    const btnIcon = document.getElementById('themeToggleIcon');
+    const btnText = document.getElementById('themeToggleText');
+    const btn = document.getElementById('themeToggleBtn');
+
+    if (btnIcon && btnText) {
+      if (isLight) {
+        btnIcon.textContent = '🌙';
+        btnText.textContent = 'Dark Mode';
+        if (btn) btn.title = 'Switch to Dark Mode';
+      } else {
+        btnIcon.textContent = '☀️';
+        btnText.textContent = 'Day Mode';
+        if (btn) btn.title = 'Switch to Day Mode';
+      }
+    }
+  }
+
+  function toggleTheme() {
+    const isLight = document.documentElement.classList.toggle('light-mode');
+    localStorage.setItem('finbot_theme', isLight ? 'light' : 'dark');
+    updateThemeUI();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    updateThemeUI();
+  });
 
   /* ── Utils ────────────────────────────────────────────────────────────── */
   function escHtml(str) {
