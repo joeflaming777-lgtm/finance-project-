@@ -221,7 +221,7 @@
     .stats-bar {
       background: var(--bg-panel);
       border-bottom: 1px solid var(--border);
-      padding: 10px 20px;
+      padding: 14px 24px;
       display: flex;
       align-items: stretch;
       gap: 0;
@@ -234,25 +234,25 @@
     .stat-item {
       display: flex;
       flex-direction: column;
-      padding: 0 20px;
+      padding: 0 24px;
       border-right: 1px solid var(--border);
-      min-width: 120px;
+      min-width: 140px;
       flex-shrink: 0;
     }
     .stat-item:first-child { padding-left: 0; }
     .stat-item:last-child  { border-right: none; }
 
     .stat-label-sm {
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 600;
       color: var(--text-3);
       text-transform: uppercase;
-      letter-spacing: 0.55px;
-      margin-bottom: 3px;
+      letter-spacing: 0.6px;
+      margin-bottom: 5px;
     }
     .stat-value-sm {
       font-family: var(--font-head);
-      font-size: 16px;
+      font-size: 19px;
       font-weight: 700;
       color: var(--text-1);
       line-height: 1;
@@ -264,8 +264,8 @@
       margin-left: auto;
       display: flex;
       align-items: center;
-      gap: 14px;
-      padding-left: 20px;
+      gap: 18px;
+      padding-left: 24px;
       flex-shrink: 0;
     }
 
@@ -273,28 +273,29 @@
     .gauge-compact {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
     .gauge-wrap {
-      width: 60px;
-      height: 36px;
+      width: 72px;
+      height: 45px;
       position: relative;
     }
-    .gauge-wrap svg { width: 60px; height: 36px; }
+    .gauge-wrap svg { width: 72px; height: 45px; }
     .gauge-score-label {
       position: absolute;
       left: 50%; bottom: 0;
       transform: translateX(-50%);
       font-family: var(--font-head);
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 700;
       color: var(--muted);
     }
     .gauge-title {
-      font-size: 10px;
+      font-size: 11px;
       color: var(--text-3);
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      text-align: center;
     }
     .score-badge-mini {
       display: flex;
@@ -303,13 +304,13 @@
     }
     .grade-mini {
       font-family: var(--font-head);
-      font-size: 18px;
+      font-size: 22px;
       font-weight: 800;
       color: var(--muted);
       line-height: 1;
     }
     .grade-mini-label {
-      font-size: 9px;
+      font-size: 10px;
       color: var(--text-3);
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -319,25 +320,25 @@
     /* Metric bars */
     .score-metrics {
       display: flex;
-      gap: 14px;
+      gap: 18px;
       align-items: center;
     }
     .score-metric {
       display: flex;
       flex-direction: column;
-      gap: 3px;
-      min-width: 56px;
+      gap: 4px;
+      min-width: 68px;
     }
     .sm-label {
-      font-size: 9px;
+      font-size: 10.5px;
       color: var(--text-3);
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.4px;
+      letter-spacing: 0.5px;
     }
     .sm-value {
       font-family: var(--font-head);
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 700;
       color: var(--text-1);
       line-height: 1;
@@ -346,7 +347,7 @@
     .expense-color { color: var(--red); }
     .saving-color  { color: var(--brand); }
     .sm-bar {
-      height: 3px;
+      height: 4px;
       background: var(--border);
       border-radius: 99px;
       overflow: hidden;
