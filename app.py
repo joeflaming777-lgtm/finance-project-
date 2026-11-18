@@ -50,10 +50,10 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "finbot-dev-secret-please-change-me")
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+GROQ_API_KEY       = os.getenv("GROQ_API_KEY", "")
 DB_PATH            = os.path.join(os.path.dirname(__file__), "finbot.db")
-AI_MODEL           = "meta-llama/llama-3.1-8b-instruct"
-AI_MAX_TOKENS      = 2000
+AI_MODEL           = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+AI_MAX_TOKENS      = int(os.getenv("AI_MAX_TOKENS", "2000"))
 
 # ── Email / SMTP config ───────────────────────────────────────────────────────
 SMTP_HOST      = os.getenv("SMTP_HOST",      "smtp.gmail.com")
@@ -835,17 +835,15 @@ def chat():
     if not messages:
         return jsonify({"error": {"message": "No messages provided"}}), 400
 
-    if not OPENROUTER_API_KEY:
-        return jsonify({"error": {"message": "OPENROUTER_API_KEY not configured on the server"}}), 500
+    if not GROQ_API_KEY:
+        return jsonify({"error": {"message": "GROQ_API_KEY not configured on the server"}}), 500
 
     try:
         resp = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
+            "https://api.groq.com/openai/v1/chat/completions",
             headers={
                 "Content-Type":  "application/json",
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "HTTP-Referer":  "http://127.0.0.1:5000",
-                "X-Title":       "FinBot Finance Assistant",
+                "Authorization": f"Bearer {GROQ_API_KEY}",
             },
             json={
                 "model":      AI_MODEL,

@@ -7,7 +7,7 @@
 ## ✨ Features
 
 ### 🤖 AI Finance Chatbot
-- Chat with **LLaMA 3.1 8B Instruct** (via [OpenRouter](https://openrouter.ai/)) about your finances
+- Chat with **LLaMA 3.3 70B Versatile** (via [Groq](https://groq.com/)) about your finances
 - AI is context-aware of your transactions and financial summary
 - Streamed, conversational interface with a dark terminal-style UI
 
@@ -71,7 +71,7 @@ finance-project/
 
 ### 1. Prerequisites
 - **Python 3.10+**
-- An **OpenRouter API key** → [openrouter.ai](https://openrouter.ai/) (free tier available)
+- A **Groq API key** → [console.groq.com/keys](https://console.groq.com/keys) (free tier available)
 
 ### 2. Clone the repo
 
@@ -96,7 +96,8 @@ Open `.env` and fill in your keys:
 
 ```env
 # AI
-OPENROUTER_API_KEY=your_openrouter_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
 SECRET_KEY=your-random-secret-key-here
 
 # Email / SMTP (Gmail) — required for email notifications
@@ -178,7 +179,7 @@ The server starts at **http://127.0.0.1:5000**
 ### AI Chat
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/chat` | Proxy messages to OpenRouter LLaMA API |
+| `POST` | `/api/chat` | Proxy messages to Groq LLaMA API |
 
 ---
 
@@ -229,7 +230,7 @@ CREATE TABLE calendar_events (
 | Backend | Python · Flask |
 | Database | SQLite (via `sqlite3`) |
 | Auth | Werkzeug password hashing · Flask sessions |
-| AI | LLaMA 3.1 8B Instruct via OpenRouter API |
+| AI | LLaMA 3.3 70B via Groq API |
 | Email | Gmail SMTP · `smtplib` · HTML MIME emails |
 | Frontend | Vanilla HTML · CSS · JavaScript |
 | Fonts | Inter · Space Grotesk · JetBrains Mono |
